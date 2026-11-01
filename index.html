@@ -186,7 +186,12 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       map = L.map('map', { zoomControl: false }).setView([51.505, -0.09], 15);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
+      
+      // Free OpenStreetMap Tile Server (No API Key Required)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
+        maxZoom: 19, 
+        attribution: '&copy; OpenStreetMap contributors' 
+      }).addTo(map);
 
       if (navigator.geolocation) {
         navigator.geolocation.watchPosition(pos => {
@@ -223,7 +228,6 @@
       document.getElementById('btn-open-roster').onclick = () => document.getElementById('modal-roster').classList.remove('hidden');
       document.getElementById('btn-close-roster').onclick = () => document.getElementById('modal-roster').classList.add('hidden');
 
-      // Launch Room Handler
       document.getElementById('btn-submit-create').onclick = async () => {
         try {
           const nameInput = document.getElementById('player-name-input');
