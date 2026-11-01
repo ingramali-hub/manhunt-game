@@ -1,120 +1,362 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manhunt GPS Multiplayer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GPS Manhunt - Real-Time Tactical Tag</title>
+  
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Leaflet CSS & JS (Free Maps) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    /* Full height map & custom scrollbar styling */
+    #map { height: 100%; width: 100%; z-index: 1; }
+    .custom-scroll::-webkit-scrollbar { width: 4px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+    
+    /* Marker Pulse Animations */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); opacity: 0.9; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .seeker-pulse::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      border-radius: 50%;
+      border: 3px solid #ef4444;
+      animation: pulse-ring 1.5s infinite;
+    }
+    .hider-pulse::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      border-radius: 50%;
+      border: 3px solid #3b82f6;
+      animation: pulse-ring 2s infinite;
+    }
+    .oob-flash {
+      animation: flash-red 1s infinite alternate;
+    }
+    @keyframes flash-red {
+      from { background-color: rgba(239, 68, 68, 0.2); }
+      to { background-color: rgba(239, 68, 68, 0.6); }
+    }
+  </style>
 </head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col">
+<body class="h-full flex flex-col font-sans antialiased select-none overflow-hidden bg-slate-950">
 
-  <!-- Setup Screen -->
-  <div id="setup-screen" class="flex-1 flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-6 rounded-2xl shadow-xl w-full max-w-md">
-      <h1 class="text-3xl font-extrabold text-center mb-2 text-indigo-400">MANHUNT GPS</h1>
-      <p class="text-gray-400 text-sm text-center mb-6">Play real-world manhunt with live GPS tracking!</p>
-      
-      <label class="block text-sm font-medium mb-1 text-gray-300">Your Name</label>
-      <input id="input-name" type="text" placeholder="e.g. Alex" class="w-full p-3 rounded-xl bg-slate-700 text-white mb-4 border border-slate-600 focus:outline-none focus:border-indigo-500">
-      
-      <label class="block text-sm font-medium mb-1 text-gray-300">Room Code</label>
-      <input id="input-room" type="text" placeholder="e.g. LOBBY1" class="w-full p-3 rounded-xl bg-slate-700 text-white mb-6 border border-slate-600 focus:outline-none focus:border-indigo-500 uppercase">
-      
-      <button onclick="joinGame()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition shadow-lg">Enter Lobby</button>
-    </div>
-  </div>
+  <!-- MAIN APP CONTAINER -->
+  <div id="app" class="h-full flex flex-col relative overflow-hidden">
 
-  <!-- Game Screen (Hidden until joined) -->
-  <div id="game-screen" class="hidden flex-1 flex flex-col h-screen">
-    <!-- Top Bar -->
-    <div class="bg-slate-800 p-3 flex justify-between items-center border-b border-slate-700 shadow-md">
-      <div>
-        <h2 id="room-title" class="font-bold text-lg text-indigo-400">Room</h2>
-        <p id="role-display" class="text-xs text-gray-300">Role: Loading...</p>
+    <!-- HEADER BAR -->
+    <header class="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between z-20 shadow-md">
+      <div class="flex items-center space-x-2">
+        <div class="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded text-xs tracking-wider uppercase">MANHUNT</div>
+        <div id="room-code-display" class="text-xs text-slate-400 font-mono hidden">ROOM: <span id="current-room-id" class="text-amber-400 font-bold">---</span></div>
       </div>
-      <div class="flex gap-2">
-        <button onclick="openRules()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold">Rules</button>
-        <button id="host-settings-btn" onclick="openHostModal()" class="hidden bg-amber-600 hover:bg-amber-500 px-3 py-1.5 rounded-lg text-xs font-semibold">Host Settings</button>
-      </div>
-    </div>
-
-    <!-- Map & HUD Container -->
-    <div class="relative flex-1">
-      <div id="map" class="w-full h-full"></div>
       
-      <!-- Floating Status Banner -->
-      <div id="status-banner" class="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/90 border border-slate-700 px-4 py-2 rounded-full shadow-lg text-xs font-semibold text-center backdrop-blur">
-        Waiting for game to start...
+      <!-- Timer & Mode Badge -->
+      <div id="timer-display" class="hidden flex items-center bg-slate-800 px-3 py-1 rounded-full border border-slate-700 space-x-2">
+        <i class="fa-solid fa-stopwatch text-amber-400 text-xs"></i>
+        <span id="time-left" class="font-mono text-xs font-bold text-slate-200">00:00</span>
       </div>
+
+      <!-- Quick Actions -->
+      <div class="flex items-center space-x-2">
+        <button id="btn-open-rules" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg border border-slate-700 transition" title="View Rules">
+          <i class="fa-solid fa-book text-sm"></i>
+        </button>
+        <button id="btn-open-roster" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg border border-slate-700 transition relative" title="View Scoreboard">
+          <i class="fa-solid fa-users text-sm"></i>
+          <span id="roster-count" class="absolute -top-1 -right-1 bg-amber-500 text-slate-950 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- NOTIFICATION ALERT BANNER -->
+    <div id="notification-banner" class="hidden bg-amber-500 text-slate-950 px-4 py-2 text-center text-xs font-bold transition-all duration-300 z-30 flex items-center justify-between shadow-lg">
+      <span id="notification-text" class="truncate flex-1">Alert message</span>
+      <button id="btn-dismiss-banner" class="ml-2 text-slate-950 hover:text-slate-800">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
     </div>
 
-    <!-- Bottom Drawer: Chat & Controls -->
-    <div class="bg-slate-800 border-t border-slate-700 p-3 flex flex-col max-h-[35vh]">
-      <div class="flex border-b border-slate-700 pb-2 mb-2 gap-2">
-        <button id="tab-chat" onclick="switchTab('chat')" class="flex-1 bg-indigo-600 py-1 rounded-lg text-xs font-bold">Comms Chat</button>
-        <button id="tab-roster" onclick="switchTab('roster')" class="flex-1 bg-slate-700 py-1 rounded-lg text-xs font-semibold">Player Roster</button>
-      </div>
+    <!-- MAIN INTERACTIVE AREA -->
+    <main class="flex-1 relative overflow-hidden">
+      
+      <!-- MAP VIEW PORT -->
+      <div id="map-container" class="w-full h-full relative">
+        <div id="map"></div>
 
-      <!-- Chat View -->
-      <div id="view-chat" class="flex flex-col flex-1 min-h-[120px]">
-        <div id="chat-messages" class="flex-1 overflow-y-auto space-y-1 pr-1 text-xs mb-2">
-          <!-- Messages populated dynamically -->
+        <!-- Floating Role Status Badge -->
+        <div id="my-role-badge" class="hidden absolute top-3 left-3 z-[10] bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700 shadow-lg flex items-center space-x-2">
+          <span id="role-indicator-dot" class="w-3 h-3 rounded-full bg-slate-400"></span>
+          <span id="role-text" class="text-xs font-bold uppercase tracking-wider text-slate-200">SPECTATOR</span>
+          <span id="oob-badge" class="hidden text-[10px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded animate-pulse">EXPOSED (OOB)</span>
         </div>
-        <div class="flex gap-2">
-          <input id="chat-input" type="text" placeholder="Type message..." class="flex-1 p-2 rounded-lg bg-slate-700 text-white text-xs border border-slate-600 focus:outline-none">
-          <button onclick="sendMessage()" class="bg-indigo-600 px-4 py-2 rounded-lg text-xs font-bold">Send</button>
+
+        <!-- Seeker Tag Floating Button -->
+        <div id="tag-action-container" class="hidden absolute bottom-6 left-1/2 -translate-x-1/2 z-[10]">
+          <button id="btn-tag-hiders" class="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold py-3 px-6 rounded-full shadow-2xl border-2 border-white/20 flex items-center space-x-2 transition">
+            <i class="fa-solid fa-crosshairs text-lg"></i>
+            <span>TAG NEARBY HIDER</span>
+          </button>
         </div>
       </div>
 
-      <!-- Roster View -->
-      <div id="view-roster" class="hidden flex-1 overflow-y-auto space-y-2 text-xs">
-        <div id="roster-list" class="space-y-1"></div>
+      <!-- LOBBY & INITIAL ENTRY OVERLAY -->
+      <div id="screen-lobby" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-40 flex flex-col p-4 overflow-y-auto">
+        <div class="max-w-md w-full mx-auto my-auto space-y-6">
+          
+          <div class="text-center space-y-2">
+            <div class="inline-block bg-amber-500 text-slate-950 px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase">GPS MULTIPLAYER</div>
+            <h1 class="text-3xl font-black tracking-tight text-white">MANHUNT GPS</h1>
+            <p class="text-xs text-slate-400">Real-world hide & seek with dynamic geofencing & stealth radar</p>
+          </div>
+
+          <!-- Join / Host Action Cards -->
+          <div id="lobby-entry-card" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Player Callsign / Name</label>
+              <input type="text" id="player-name-input" placeholder="e.g. Ghost, Maverick..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500 text-sm">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-2">
+              <button id="btn-show-create" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm transition">
+                Create Room
+              </button>
+              <button id="btn-show-join" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl text-sm border border-slate-700 transition">
+                Join Room
+              </button>
+            </div>
+          </div>
+
+          <!-- Join Room Form -->
+          <div id="join-form-card" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider">Join Room</h3>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 mb-1">Enter 4-Letter Room Code</label>
+              <input type="text" id="join-room-code" placeholder="e.g. K9X4" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 placeholder-slate-600 font-mono text-center text-lg tracking-widest focus:outline-none focus:border-amber-500 uppercase">
+            </div>
+            <div class="flex space-x-2">
+              <button id="btn-back-entry-1" class="w-1/3 bg-slate-800 text-slate-400 font-bold py-2.5 rounded-xl text-xs">Back</button>
+              <button id="btn-submit-join" class="w-2/3 bg-amber-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs hover:bg-amber-400">Join Game</button>
+            </div>
+          </div>
+
+          <!-- Host Options Form -->
+          <div id="create-form-card" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider">Configure Match (Host)</h3>
+            
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Match Duration (Minutes)</label>
+                <input type="number" id="setting-duration" value="30" min="5" max="180" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+              </div>
+
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Tracking Mode</label>
+                <select id="setting-mode" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                  <option value="proximity">Proximity Radar (Hides Hiders when Seekers are &lt;100m)</option>
+                  <option value="ping">Periodic Ping (Location reveals only every X mins)</option>
+                </select>
+              </div>
+
+              <div id="ping-interval-box" class="hidden">
+                <label class="block text-xs text-slate-400 mb-1">Ping Interval (Minutes)</label>
+                <input type="number" id="setting-ping-interval" value="3" min="1" max="15" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200">
+              </div>
+
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">Boundary Geofence Radius (Meters)</label>
+                <input type="number" id="setting-radius" value="500" step="50" min="100" max="5000" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200">
+                <p class="text-[10px] text-slate-500 mt-1">Geofence center locks to Host GPS position at start.</p>
+              </div>
+            </div>
+
+            <div class="flex space-x-2 pt-2">
+              <button id="btn-back-entry-2" class="w-1/3 bg-slate-800 text-slate-400 font-bold py-2.5 rounded-xl text-xs">Back</button>
+              <button id="btn-submit-create" class="w-2/3 bg-amber-500 text-slate-950 font-bold py-2.5 rounded-xl text-xs hover:bg-amber-400">Launch Room</button>
+            </div>
+          </div>
+
+          <!-- Waiting Lobby -->
+          <div id="waiting-lobby-card" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <span class="text-xs text-slate-400 uppercase font-bold">Room Code</span>
+                <div id="lobby-room-code" class="text-2xl font-mono font-black text-amber-400">---</div>
+              </div>
+              <div id="host-badge" class="hidden bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs px-2.5 py-1 rounded-full font-bold">Room Host</div>
+            </div>
+
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs text-slate-400 font-bold uppercase">Players Joined (<span id="lobby-count">0</span>)</span>
+              </div>
+              <div id="lobby-players-list" class="space-y-1.5 max-h-40 overflow-y-auto custom-scroll pr-1"></div>
+            </div>
+
+            <div id="host-controls" class="hidden space-y-2 pt-2">
+              <button id="btn-start-game" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-dice"></i>
+                <span>Randomize Roles & Start</span>
+              </button>
+            </div>
+            
+            <p id="non-host-msg" class="text-center text-xs text-slate-500 italic">Waiting for host to pick roles and launch...</p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- COMMS CHAT WIDGET -->
+      <div id="chat-widget" class="absolute bottom-4 right-4 z-20 flex flex-col items-end">
+        
+        <!-- Chat Drawer -->
+        <div id="chat-drawer" class="hidden bg-slate-900/95 border border-slate-800 backdrop-blur-md rounded-2xl w-80 h-96 shadow-2xl flex flex-col overflow-hidden mb-3">
+          <div class="bg-slate-800/80 px-4 py-3 border-b border-slate-700/50 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-tower-broadcast text-amber-400 text-xs"></i>
+              <span id="chat-channel-title" class="text-xs font-bold text-slate-200 uppercase tracking-wider">Radio Channel</span>
+            </div>
+            <button id="btn-close-chat" class="text-slate-400 hover:text-white">
+              <i class="fa-solid fa-chevron-down text-sm"></i>
+            </button>
+          </div>
+
+          <div id="chat-messages" class="flex-1 p-3 overflow-y-auto space-y-2 text-xs custom-scroll">
+            <div class="text-slate-500 text-center text-[11px]">Radio stream active. Speak wisely.</div>
+          </div>
+
+          <form id="chat-form" class="p-2 border-t border-slate-800 flex space-x-2 bg-slate-950">
+            <input type="text" id="chat-input" placeholder="Type transmission..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500">
+            <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+
+        <button id="btn-toggle-chat" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-3.5 rounded-full shadow-2xl flex items-center justify-center transition border-2 border-slate-900">
+          <i class="fa-solid fa-message text-base"></i>
+        </button>
+      </div>
+
+    </main>
+
+    <!-- ROSTER SCOREBOARD MODAL -->
+    <div id="modal-roster" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-5 space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <h3 class="font-bold text-sm text-amber-400 uppercase tracking-wider">Tactical Roster</h3>
+          <button class="btn-close-modal text-slate-400 hover:text-white">
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
+        </div>
+
+        <div class="space-y-4 max-h-[60vh] overflow-y-auto custom-scroll pr-1">
+          <div>
+            <div class="text-[11px] font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center">
+              <i class="fa-solid fa-user-ninja mr-1.5"></i> Seekers (<span id="count-seekers">0</span>)
+            </div>
+            <div id="roster-seekers" class="space-y-1"></div>
+          </div>
+
+          <div>
+            <div class="text-[11px] font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center">
+              <i class="fa-solid fa-user-shield mr-1.5"></i> Active Hiders (<span id="count-hiders">0</span>)
+            </div>
+            <div id="roster-hiders" class="space-y-1"></div>
+          </div>
+
+          <div>
+            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center">
+              <i class="fa-solid fa-skull mr-1.5"></i> Caught & Reassigned (<span id="count-caught">0</span>)
+            </div>
+            <div id="roster-caught" class="space-y-1"></div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Rules Modal -->
-  <div id="modal-rules" class="fixed inset-0 bg-black/70 z-[2000] hidden flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-      <h2 class="text-xl font-bold mb-3 text-indigo-400">Manhunt Rules</h2>
-      <ul class="space-y-2 text-sm text-gray-300 list-disc pl-4 mb-5">
-        <li><strong>Runners (Hiders):</strong> Try to survive until the timer expires without getting caught.</li>
-        <li><strong>Seekers (Chasers):</strong> Hunt down the runners!</li>
-        <li><strong>Proximity Rule:</strong> Runners' locations disappear from seekers' maps when seekers get too close (under 100m).</li>
-        <li><strong>Boundaries:</strong> Stay inside the boundary circle! Stepping outside makes your location permanently visible to everyone.</li>
-      </ul>
-      <button onclick="closeRules()" class="w-full bg-slate-700 hover:bg-slate-600 py-2 rounded-xl font-semibold">Close</button>
-    </div>
-  </div>
+    <!-- RULES MODAL -->
+    <div id="modal-rules" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-5 space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <h3 class="font-bold text-sm text-amber-400 uppercase tracking-wider">Rules of Engagement</h3>
+          <button class="btn-close-modal text-slate-400 hover:text-white">
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
+        </div>
 
-  <!-- Host Settings Modal -->
-  <div id="modal-host" class="fixed inset-0 bg-black/70 z-[2000] hidden flex items-center justify-center p-4">
-    <div class="bg-slate-800 p-6 rounded-2xl max-w-md w-full">
-      <h2 class="text-xl font-bold mb-3 text-amber-400">Host Game Controls</h2>
-      
-      <label class="block text-xs font-medium mb-1 text-gray-300">Game Duration (Minutes)</label>
-      <input id="setting-duration" type="number" value="30" class="w-full p-2.5 rounded-xl bg-slate-700 text-white mb-3 text-sm border border-slate-600">
+        <div class="space-y-3 text-xs text-slate-300 leading-relaxed max-h-[60vh] overflow-y-auto custom-scroll pr-1">
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="font-bold text-amber-400 block mb-1">1. Objective</span>
+            Hiders must stay un-tagged until the timer expires. Seekers must tag all hiders.
+          </div>
 
-      <label class="block text-xs font-medium mb-1 text-gray-300">Visibility Mode</label>
-      <select id="setting-mode" class="w-full p-2.5 rounded-xl bg-slate-700 text-white mb-4 text-sm border border-slate-600">
-        <option value="proximity">Proximity Hide (Disappears near seekers)</option>
-        <option value="ping">Periodic Ping Timer</option>
-      </select>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="font-bold text-amber-400 block mb-1">2. Radar Tracking Rules</span>
+            <ul class="list-disc pl-4 space-y-1 text-slate-400">
+              <li><b>Proximity Mode:</b> Seekers see Hiders on map UNTIL they get within 100 meters. Stealth automatically turns ON at close distance!</li>
+              <li><b>Ping Mode:</b> Hider coordinates are revealed on fixed time intervals (e.g. every 3 mins).</li>
+            </ul>
+          </div>
 
-      <div class="flex gap-2">
-        <button onclick="startGameAction()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-xl font-bold text-sm">Start Game</button>
-        <button onclick="closeHostModal()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2.5 rounded-xl text-sm">Cancel</button>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="font-bold text-red-400 block mb-1">3. Boundaries & Penalty</span>
+            Stay inside the red circle on the map! Stepping out of bounds triggers an alarm and forces your live location to be exposed to all Seekers.
+          </div>
+
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+            <span class="font-bold text-amber-400 block mb-1">4. Tagging & Dynamic Chat</span>
+            When physically tagged, Seekers select the caught hider. Caught hiders join the Seekers and switch to Seeker radio chat!
+          </div>
+        </div>
+
+        <button class="btn-close-modal w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs">
+          Return to Game
+        </button>
       </div>
     </div>
+
+    <!-- TAG MODAL -->
+    <div id="modal-tag" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-5 space-y-4">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+          <h3 class="font-bold text-sm text-red-400 uppercase tracking-wider"><i class="fa-solid fa-crosshairs mr-1"></i> Confirm Tag</h3>
+          <button class="btn-close-modal text-slate-400 hover:text-white">
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
+        </div>
+        <p class="text-xs text-slate-400">Select the player you tagged:</p>
+        <div id="tag-hider-list" class="space-y-2"></div>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Firebase SDKs -->
+  <!-- FIREBASE MODULES -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { 
+      getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { 
+      getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
+    // Application Configuration & Globals with your Firebase project keys
+    const appId = 'manhunt-game-2dc41';
     const firebaseConfig = {
       apiKey: "AIzaSyDd4L5crymw_eiaW14gECTEh8MySqyCkW8",
       authDomain: "manhunt-game-2dc41.firebaseapp.com",
@@ -126,165 +368,724 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
 
-    let myName = "";
-    let roomCode = "";
-    let myId = "user_" + Math.random().toString(36).substr(2, 9);
+    // App State Variables
+    let currentUser = null;
+    let myPlayerId = null;
+    let myPlayerName = "";
+    let currentRoomId = null;
+    let isHost = false;
+    let myRole = "hider"; 
+    let userLocation = { lat: 0, lng: 0, accuracy: 0 };
+    let watchPositionId = null;
     let map = null;
-    let myMarker = null;
+    let playerMarkers = {};
     let boundaryCircle = null;
-    let playersData = {};
-    let roomData = {};
-    let watchId = null;
+    let roomData = null;
+    let roomPlayers = {};
+    let isOutOfBounds = false;
 
-    window.joinGame = async function() {
-      myName = document.getElementById('input-name').value.trim();
-      roomCode = document.getElementById('input-room').value.trim().toUpperCase();
+    let unsubscribeRoom = null;
+    let unsubscribePlayers = null;
+    let unsubscribeChat = null;
 
-      if (!myName || !roomCode) {
-        alert("Please enter your name and a room code!");
+    // Web Audio Synthesizer Beeps
+    function playAudioTone(freq = 600, type = 'sine', duration = 0.2) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    // Leaflet Map Initialization
+    function initMap() {
+      if (map) return;
+      map = L.map('map', { zoomControl: false }).setView([51.505, -0.09], 15);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 19
+      }).addTo(map);
+
+      L.control.zoom({ position: 'topright' }).addTo(map);
+    }
+
+    // Custom Map Icon Creation
+    function createMarkerIcon(role, name, isMe, isCaught) {
+      let bgColor = "#3b82f6";
+      let iconClass = "fa-user-shield";
+      
+      if (role === 'seeker') {
+        bgColor = "#ef4444";
+        iconClass = "fa-user-ninja";
+      } else if (isCaught) {
+        bgColor = "#64748b";
+        iconClass = "fa-skull";
+      }
+
+      const pulseClass = (role === 'seeker') ? 'seeker-pulse' : 'hider-pulse';
+      const border = isMe ? 'border-2 border-amber-400 scale-110' : 'border border-slate-900';
+
+      const html = `
+        <div class="relative flex flex-col items-center">
+          <div class="w-8 h-8 rounded-full ${bgColor} text-white flex items-center justify-center font-bold shadow-lg ${border} ${pulseClass}">
+            <i class="fa-solid ${iconClass} text-xs"></i>
+          </div>
+          <span class="bg-slate-950/90 text-[10px] text-white px-1.5 py-0.5 rounded font-bold mt-1 shadow truncate max-w-[80px] border border-slate-800">
+            ${isMe ? 'YOU' : name}
+          </span>
+        </div>
+      `;
+
+      return L.divIcon({
+        html: html,
+        className: 'custom-map-pin',
+        iconSize: [32, 48],
+        iconAnchor: [16, 24]
+      });
+    }
+
+    // GPS Tracking
+    function startLocationTracking() {
+      if (!navigator.geolocation) {
+        showNotification("Geolocation is not supported by your browser");
         return;
       }
 
-      document.getElementById('setup-screen').classList.add('hidden');
-      document.getElementById('game-screen').classList.remove('hidden');
-      document.getElementById('room-title').textContent = `Room: ${roomCode}`;
+      watchPositionId = navigator.geolocation.watchPosition(
+        (pos) => {
+          userLocation.lat = pos.coords.latitude;
+          userLocation.lng = pos.coords.longitude;
+          userLocation.accuracy = pos.coords.accuracy;
 
-      initMap();
+          if (map && !window.hasCenteredMap) {
+            map.setView([userLocation.lat, userLocation.lng], 16);
+            window.hasCenteredMap = true;
+          }
 
-      // Check / Create Room
-      const roomRef = doc(db, "rooms", roomCode);
-      const roomSnap = await getDoc(roomRef);
+          checkBoundaryAndSync();
+        },
+        (err) => {
+          console.warn("GPS Warning:", err);
+          showNotification("Location permissions needed for tracking.");
+        },
+        { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
+      );
+    }
 
-      if (!roomSnap.exists()) {
-        await setDoc(roomRef, {
-          host: myId,
-          status: "waiting",
-          duration: 30,
-          mode: "proximity",
-          centerLat: 0,
-          centerLng: 0,
-          radius: 1000
+    // Distance Calculation (Haversine Formula)
+    function getDistanceMeters(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // Geofence Boundary Check & Position Sync
+    async function checkBoundaryAndSync() {
+      if (!currentRoomId || !myPlayerId || !roomData || roomData.status !== 'playing') return;
+
+      if (roomData.center) {
+        const distToCenter = getDistanceMeters(
+          userLocation.lat, userLocation.lng,
+          roomData.center.lat, roomData.center.lng
+        );
+
+        const wasOutOfBounds = isOutOfBounds;
+        isOutOfBounds = distToCenter > roomData.boundaryRadius;
+
+        const badge = document.getElementById('oob-badge');
+        if (isOutOfBounds) {
+          badge.classList.remove('hidden');
+          if (!wasOutOfBounds) {
+            playAudioTone(900, 'sawtooth', 0.4);
+            showNotification("WARNING: Out of Bounds! Location exposed to Seekers!");
+          }
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+
+      try {
+        const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, myPlayerId);
+        await updateDoc(playerRef, {
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+          isOutOfBounds: isOutOfBounds,
+          lastUpdated: Date.now()
+        });
+      } catch (err) {
+        console.error("Position update error:", err);
+      }
+    }
+
+    // Firebase Auth Initialization
+    async function initAuth() {
+      try {
+        await signInAnonymously(auth);
+      } catch (e) {
+        console.error("Auth error:", e);
+      }
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        myPlayerId = user.uid;
+      }
+    });
+
+    function generateRoomCode() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 4; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+      return code;
+    }
+
+    // Create Room
+    async function createGameRoom() {
+      const name = document.getElementById('player-name-input').value.trim();
+      if (!name) { alert("Please enter a callsign!"); return; }
+      myPlayerName = name;
+
+      const duration = parseInt(document.getElementById('setting-duration').value) || 30;
+      const gameMode = document.getElementById('setting-mode').value;
+      const pingInterval = parseInt(document.getElementById('setting-ping-interval').value) || 3;
+      const radius = parseInt(document.getElementById('setting-radius').value) || 500;
+
+      const roomId = generateRoomCode();
+      currentRoomId = roomId;
+      isHost = true;
+
+      const center = {
+        lat: userLocation.lat || 51.505,
+        lng: userLocation.lng || -0.09
+      };
+
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId);
+      await setDoc(roomRef, {
+        roomId: roomId,
+        hostId: myPlayerId,
+        status: 'lobby',
+        durationMinutes: duration,
+        gameMode: gameMode,
+        pingIntervalMinutes: pingInterval,
+        boundaryRadius: radius,
+        center: center,
+        startTime: null,
+        createdAt: Date.now()
+      });
+
+      await registerPlayerDoc(roomId, name, true);
+      subscribeToRoom(roomId);
+      showLobbyScreen();
+    }
+
+    // Join Room
+    async function joinGameRoom() {
+      const name = document.getElementById('player-name-input').value.trim();
+      const code = document.getElementById('join-room-code').value.trim().toUpperCase();
+
+      if (!name || !code) { alert("Please complete name and code fields!"); return; }
+
+      myPlayerName = name;
+      currentRoomId = code;
+      isHost = false;
+
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', code);
+      const snap = await getDoc(roomRef);
+
+      if (!snap.exists()) {
+        alert("Room code invalid or expired.");
+        return;
+      }
+
+      await registerPlayerDoc(code, name, false);
+      subscribeToRoom(code);
+      showLobbyScreen();
+    }
+
+    async function registerPlayerDoc(roomId, name, hostFlag) {
+      const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`, myPlayerId);
+      await setDoc(playerRef, {
+        id: myPlayerId,
+        name: name,
+        role: 'hider',
+        isHost: hostFlag,
+        isCaught: false,
+        lat: userLocation.lat || 0,
+        lng: userLocation.lng || 0,
+        isOutOfBounds: false,
+        lastUpdated: Date.now()
+      });
+    }
+
+    // Firestore Observers
+    function subscribeToRoom(roomId) {
+      if (unsubscribeRoom) unsubscribeRoom();
+      if (unsubscribePlayers) unsubscribePlayers();
+      if (unsubscribeChat) unsubscribeChat();
+
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId);
+      unsubscribeRoom = onSnapshot(roomRef, (snap) => {
+        if (snap.exists()) {
+          roomData = snap.data();
+          updateGameUIFromRoomData();
+        }
+      });
+
+      const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`);
+      unsubscribePlayers = onSnapshot(playersCol, (snap) => {
+        roomPlayers = {};
+        snap.forEach(doc => { roomPlayers[doc.id] = doc.data(); });
+
+        if (roomPlayers[myPlayerId]) {
+          const newRole = roomPlayers[myPlayerId].role;
+          if (newRole !== myRole) {
+            myRole = newRole;
+            showNotification(`Role updated: You are now a ${myRole.toUpperCase()}`);
+            playAudioTone(800, 'triangle', 0.3);
+          }
+        }
+
+        updateLobbyPlayersList();
+        updateRosterUI();
+        renderMapMarkers();
+      });
+
+      subscribeToChat(roomId);
+    }
+
+    // Role Assignment Randomizer
+    async function startGame() {
+      if (!isHost || !currentRoomId) return;
+
+      const playerIds = Object.keys(roomPlayers);
+      if (playerIds.length < 1) {
+        alert("At least 1 player required to start!");
+        return;
+      }
+
+      const numSeekers = Math.max(1, Math.floor(playerIds.length / 3));
+      const shuffled = [...playerIds].sort(() => 0.5 - Math.random());
+      const seekerIds = new Set(shuffled.slice(0, numSeekers));
+
+      for (const id of playerIds) {
+        const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, id);
+        const assignedRole = seekerIds.has(id) ? 'seeker' : 'hider';
+        await updateDoc(playerRef, {
+          role: assignedRole,
+          isCaught: false
         });
       }
 
-      // Add self to players
-      const playerRef = doc(db, "rooms", roomCode, "players", myId);
-      await setDoc(playerRef, {
-        name: myName,
-        role: "runner",
-        lat: 0,
-        lng: 0,
-        isOutOfBounds: false,
-        lastUpdated: serverTimestamp()
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', currentRoomId);
+      await updateDoc(roomRef, {
+        status: 'playing',
+        startTime: Date.now(),
+        center: { lat: userLocation.lat || 51.505, lng: userLocation.lng || -0.09 }
       });
 
-      startLocationTracking();
-      listenToRoom();
-      listenToPlayers();
-      listenToChat();
-    };
-
-    function initMap() {
-      map = L.map('map').setView([51.505, -0.09], 16);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
+      showNotification("MATCH STARTED! Check your radar!");
     }
 
-    function startLocationTracking() {
-      if (navigator.geolocation) {
-        watchId = navigator.geolocation.watchPosition(async (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
+    function showLobbyScreen() {
+      document.getElementById('screen-lobby').classList.remove('hidden');
+      document.getElementById('lobby-entry-card').classList.add('hidden');
+      document.getElementById('join-form-card').classList.add('hidden');
+      document.getElementById('create-form-card').classList.add('hidden');
+      document.getElementById('waiting-lobby-card').classList.remove('hidden');
 
-          if (!myMarker) {
-            myMarker = L.marker([lat, lng]).addTo(map).bindPopup("You");
-            map.setView([lat, lng], 16);
-          } else {
-            myMarker.setLatLng([lat, lng]);
-          }
+      document.getElementById('room-code-display').classList.remove('hidden');
+      document.getElementById('current-room-id').innerText = currentRoomId;
+      document.getElementById('lobby-room-code').innerText = currentRoomId;
 
-          // Update Firestore
-          await updateDoc(doc(db, "rooms", roomCode, "players", myId), {
-            lat: lat,
-            lng: lng,
-            lastUpdated: serverTimestamp()
-          });
-        }, (err) => {
-          alert("GPS Error: " + err.message);
-        }, { enableHighAccuracy: true });
+      if (isHost) {
+        document.getElementById('host-badge').classList.remove('hidden');
+        document.getElementById('host-controls').classList.remove('hidden');
+        document.getElementById('non-host-msg').classList.add('hidden');
+      } else {
+        document.getElementById('host-badge').classList.add('hidden');
+        document.getElementById('host-controls').classList.add('hidden');
+        document.getElementById('non-host-msg').classList.remove('hidden');
       }
     }
 
-    function listenToRoom() {
-      onSnapshot(doc(db, "rooms", roomCode), (docSnap) => {
-        if (docSnap.exists()) {
-          roomData = docSnap.data();
-          if (roomData.host === myId) {
-            document.getElementById('host-settings-btn').classList.remove('hidden');
+    function updateLobbyPlayersList() {
+      const listEl = document.getElementById('lobby-players-list');
+      listEl.innerHTML = '';
+      const playersArr = Object.values(roomPlayers);
+      document.getElementById('lobby-count').innerText = playersArr.length;
+
+      playersArr.forEach(p => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between bg-slate-950 px-3 py-2 rounded-xl border border-slate-800/80 text-xs";
+        item.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full ${p.isHost ? 'bg-amber-400' : 'bg-slate-600'}"></span>
+            <span class="font-bold text-slate-200">${p.name} ${p.id === myPlayerId ? '(You)' : ''}</span>
+          </div>
+          ${p.isHost ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold">HOST</span>' : ''}
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    function updateGameUIFromRoomData() {
+      if (!roomData) return;
+
+      if (roomData.status === 'playing') {
+        document.getElementById('screen-lobby').classList.add('hidden');
+        document.getElementById('timer-display').classList.remove('hidden');
+        
+        if (roomData.center && roomData.boundaryRadius) {
+          if (boundaryCircle) map.removeLayer(boundaryCircle);
+          boundaryCircle = L.circle([roomData.center.lat, roomData.center.lng], {
+            color: '#ef4444',
+            fillColor: '#ef4444',
+            fillOpacity: 0.08,
+            radius: roomData.boundaryRadius,
+            dashArray: '6, 8',
+            weight: 2
+          }).addTo(map);
+        }
+
+        if (myRole === 'seeker') {
+          document.getElementById('tag-action-container').classList.remove('hidden');
+        } else {
+          document.getElementById('tag-action-container').classList.add('hidden');
+        }
+
+        const roleText = document.getElementById('role-text');
+        const roleDot = document.getElementById('role-indicator-dot');
+        
+        if (myRole === 'seeker') {
+          roleText.innerText = 'SEEKER';
+          roleDot.className = 'w-3 h-3 rounded-full bg-red-500 animate-pulse';
+        } else if (myRole === 'hider') {
+          roleText.innerText = 'HIDER';
+          roleDot.className = 'w-3 h-3 rounded-full bg-blue-500 animate-pulse';
+        } else {
+          roleText.innerText = 'REASSIGNED SEEKER';
+          roleDot.className = 'w-3 h-3 rounded-full bg-slate-500';
+        }
+        document.getElementById('my-role-badge').classList.remove('hidden');
+
+        startTimerCountdown();
+      }
+    }
+
+    function startTimerCountdown() {
+      if (window.gameTimerInterval) clearInterval(window.gameTimerInterval);
+      
+      window.gameTimerInterval = setInterval(() => {
+        if (!roomData || !roomData.startTime) return;
+
+        const totalMs = roomData.durationMinutes * 60 * 1000;
+        const elapsedMs = Date.now() - roomData.startTime;
+        const remainingMs = Math.max(0, totalMs - elapsedMs);
+
+        const mins = Math.floor(remainingMs / 60000);
+        const secs = Math.floor((remainingMs % 60000) / 1000);
+
+        document.getElementById('time-left').innerText = 
+          `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+        if (remainingMs <= 0) {
+          clearInterval(window.gameTimerInterval);
+          showNotification("TIME EXPIRED! Game Over!");
+        }
+      }, 1000);
+    }
+
+    // Map Rendering & Proximity / Ping Mechanics
+    function renderMapMarkers() {
+      if (!map || roomData?.status !== 'playing') return;
+
+      const players = Object.values(roomPlayers);
+      const seekerList = players.filter(p => p.role === 'seeker');
+
+      players.forEach(p => {
+        const isMe = p.id === myPlayerId;
+        let shouldShowOnMap = false;
+
+        if (isMe || p.role === 'seeker') {
+          shouldShowOnMap = true;
+        } else if (p.isOutOfBounds) {
+          shouldShowOnMap = true;
+        } else if (p.role === 'hider' && !p.isCaught) {
+          if (myRole === 'hider') {
+            shouldShowOnMap = true;
+          } else {
+            if (roomData.gameMode === 'proximity') {
+              let nearestSeekerDist = Infinity;
+              seekerList.forEach(s => {
+                const d = getDistanceMeters(p.lat, p.lng, s.lat, s.lng);
+                if (d < nearestSeekerDist) nearestSeekerDist = d;
+              });
+              shouldShowOnMap = (nearestSeekerDist > 100);
+            } else if (roomData.gameMode === 'ping') {
+              const now = Date.now();
+              const pingMs = (roomData.pingIntervalMinutes || 3) * 60 * 1000;
+              const lastPingWindow = Math.floor((now - roomData.startTime) / pingMs);
+              const playerLastPingWindow = Math.floor((p.lastUpdated - roomData.startTime) / pingMs);
+              shouldShowOnMap = (playerLastPingWindow >= lastPingWindow);
+            }
+          }
+        }
+
+        if (shouldShowOnMap && p.lat && p.lng) {
+          const icon = createMarkerIcon(p.role, p.name, isMe, p.isCaught);
+          if (playerMarkers[p.id]) {
+            playerMarkers[p.id].setLatLng([p.lat, p.lng]);
+            playerMarkers[p.id].setIcon(icon);
+          } else {
+            playerMarkers[p.id] = L.marker([p.lat, p.lng], { icon: icon }).addTo(map);
+          }
+        } else {
+          if (playerMarkers[p.id]) {
+            map.removeLayer(playerMarkers[p.id]);
+            delete playerMarkers[p.id];
           }
         }
       });
     }
 
-    function listenToPlayers() {
-      onSnapshot(query(collection(db, "rooms", roomCode, "players")), (snapshot) => {
-        snapshot.forEach((docSnap) => {
-          playersData[docSnap.id] = docSnap.data();
+    // Scoreboard Update
+    function updateRosterUI() {
+      const seekersContainer = document.getElementById('roster-seekers');
+      const hidersContainer = document.getElementById('roster-hiders');
+      const caughtContainer = document.getElementById('roster-caught');
+
+      seekersContainer.innerHTML = '';
+      hidersContainer.innerHTML = '';
+      caughtContainer.innerHTML = '';
+
+      const players = Object.values(roomPlayers);
+      document.getElementById('roster-count').innerText = players.length;
+
+      let countS = 0, countH = 0, countC = 0;
+
+      players.forEach(p => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs";
+        const badge = p.isOutOfBounds ? '<span class="text-[9px] bg-red-600/30 text-red-400 font-bold px-1.5 py-0.5 rounded ml-2">OOB</span>' : '';
+
+        item.innerHTML = `
+          <span class="font-bold text-slate-200">${p.name} ${p.id === myPlayerId ? '(You)' : ''} ${badge}</span>
+          <span class="text-[10px] text-slate-500 uppercase font-mono">${p.role}</span>
+        `;
+
+        if (p.role === 'seeker') {
+          seekersContainer.appendChild(item);
+          countS++;
+        } else if (p.isCaught) {
+          caughtContainer.appendChild(item);
+          countC++;
+        } else {
+          hidersContainer.appendChild(item);
+          countH++;
+        }
+      });
+
+      document.getElementById('count-seekers').innerText = countS;
+      document.getElementById('count-hiders').innerText = countH;
+      document.getElementById('count-caught').innerText = countC;
+    }
+
+    // Tag Player Modal Functionality
+    function openTagModal() {
+      const container = document.getElementById('tag-hider-list');
+      container.innerHTML = '';
+
+      const hiders = Object.values(roomPlayers).filter(p => p.role === 'hider' && !p.isCaught);
+
+      if (hiders.length === 0) {
+        container.innerHTML = `<div class="text-xs text-slate-500 text-center py-2">No active hiders remaining!</div>`;
+      } else {
+        hiders.forEach(h => {
+          const btn = document.createElement('button');
+          btn.className = "w-full bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 font-bold py-2.5 px-3 rounded-xl text-xs flex justify-between items-center transition";
+          btn.innerHTML = `<span>TAG ${h.name.toUpperCase()}</span> <i class="fa-solid fa-skull"></i>`;
+          btn.onclick = () => confirmTagPlayer(h.id, h.name);
+          container.appendChild(btn);
         });
-        updateRosterUI();
+      }
+
+      document.getElementById('modal-tag').classList.remove('hidden');
+    }
+
+    async function confirmTagPlayer(hiderId, hiderName) {
+      if (!currentRoomId) return;
+
+      const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, hiderId);
+      await updateDoc(playerRef, {
+        role: 'seeker',
+        isCaught: true
+      });
+
+      document.getElementById('modal-tag').classList.add('hidden');
+      showNotification(`PLAYER CAUGHT: ${hiderName} has been converted to Seeker!`);
+      playAudioTone(400, 'sawtooth', 0.3);
+
+      const remainingHiders = Object.values(roomPlayers).filter(p => p.role === 'hider' && p.id !== hiderId);
+      if (remainingHiders.length === 0) {
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', currentRoomId);
+        await updateDoc(roomRef, { status: 'ended' });
+        alert("SEEKERS WIN! All hiders captured!");
+      }
+    }
+
+    // Role-Based Radio Chat
+    function subscribeToChat(roomId) {
+      const chatCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_chat`);
+      unsubscribeChat = onSnapshot(chatCol, (snap) => {
+        const msgs = [];
+        snap.forEach(d => msgs.push(d.data()));
+        msgs.sort((a, b) => a.timestamp - b.timestamp);
+        renderChatMessages(msgs);
       });
     }
 
-    function listenToChat() {
-      const chatContainer = document.getElementById('chat-messages');
-      onSnapshot(query(collection(db, "rooms", roomCode, "chats"), orderBy("timestamp", "asc")), (snapshot) => {
-        chatContainer.innerHTML = "";
-        snapshot.forEach((docSnap) => {
-          const msg = docSnap.data();
-          const div = document.createElement('div');
-          div.textContent = `${msg.sender}: ${msg.text}`;
-          chatContainer.appendChild(div);
-        });
-        chatContainer.scrollTop = chatContainer.scrollHeight;
+    function renderChatMessages(msgs) {
+      const container = document.getElementById('chat-messages');
+      const channelTitle = document.getElementById('chat-channel-title');
+      
+      const channelRole = (myRole === 'seeker' || myRole === 'caught') ? 'seeker' : 'hider';
+      channelTitle.innerText = `${channelRole.toUpperCase()} RADIO`;
+      channelTitle.className = `text-xs font-bold uppercase tracking-wider ${channelRole === 'seeker' ? 'text-red-400' : 'text-blue-400'}`;
+
+      container.innerHTML = '';
+      const visibleMsgs = msgs.filter(m => m.channel === channelRole || m.channel === 'all');
+
+      visibleMsgs.forEach(m => {
+        const isMe = m.senderId === myPlayerId;
+        const div = document.createElement('div');
+        div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
+
+        div.innerHTML = `
+          <div class="text-[9px] text-slate-500 mb-0.5">${m.senderName}</div>
+          <div class="px-3 py-1.5 rounded-2xl max-w-[85%] break-words ${
+            isMe 
+              ? 'bg-amber-500 text-slate-950 font-medium rounded-br-none' 
+              : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700'
+          }">
+            ${m.text}
+          </div>
+        `;
+        container.appendChild(div);
       });
+
+      container.scrollTop = container.scrollHeight;
     }
 
-    window.sendMessage = async function() {
+    async function sendChatMessage(e) {
+      e.preventDefault();
       const input = document.getElementById('chat-input');
       const text = input.value.trim();
-      if (!text) return;
+      if (!text || !currentRoomId) return;
 
-      await addDoc(collection(db, "rooms", roomCode, "chats"), {
-        sender: myName,
+      const channelRole = (myRole === 'seeker' || myRole === 'caught') ? 'seeker' : 'hider';
+      const chatCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_chat`);
+      const msgDoc = doc(chatCol);
+
+      await setDoc(msgDoc, {
+        senderId: myPlayerId,
+        senderName: myPlayerName,
         text: text,
-        timestamp: serverTimestamp()
+        channel: channelRole,
+        timestamp: Date.now()
       });
-      input.value = "";
-    };
 
-    function updateRosterUI() {
-      const rosterList = document.getElementById('roster-list');
-      rosterList.innerHTML = "";
-      Object.keys(playersData).forEach(id => {
-        const p = playersData[id];
-        const div = document.createElement('div');
-        div.className = "flex justify-between items-center bg-slate-700/50 p-2 rounded-lg";
-        div.innerHTML = `<span>${p.name} (${p.role})</span> ${roomData.host === myId && p.role === 'runner' ? `<button onclick="catchPlayer('${id}')" class="bg-red-600 px-2 py-1 rounded text-xs">Catch</button>` : ''}`;
-        rosterList.appendChild(div);
-      });
+      input.value = '';
     }
 
-    window.catchPlayer = async function(targetId) {
-      await updateDoc(doc(db, "rooms", roomCode, "players", targetId), {
-        role: "seeker"
+    function showNotification(msg) {
+      const banner = document.getElementById('notification-banner');
+      document.getElementById('notification-text').innerText = msg;
+      banner.classList.remove('hidden');
+
+      setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 5000);
+    }
+
+    window.onload = async () => {
+      initMap();
+      startLocationTracking();
+      await initAuth();
+
+      // UI Listeners
+      document.getElementById('btn-show-create').onclick = () => {
+        document.getElementById('lobby-entry-card').classList.add('hidden');
+        document.getElementById('create-form-card').classList.remove('hidden');
+      };
+      document.getElementById('btn-show-join').onclick = () => {
+        document.getElementById('lobby-entry-card').classList.add('hidden');
+        document.getElementById('join-form-card').classList.remove('hidden');
+      };
+      document.getElementById('btn-back-entry-1').onclick = () => {
+        document.getElementById('join-form-card').classList.add('hidden');
+        document.getElementById('lobby-entry-card').classList.remove('hidden');
+      };
+      document.getElementById('btn-back-entry-2').onclick = () => {
+        document.getElementById('create-form-card').classList.add('hidden');
+        document.getElementById('lobby-entry-card').classList.remove('hidden');
+      };
+
+      document.getElementById('btn-submit-create').onclick = createGameRoom;
+      document.getElementById('btn-submit-join').onclick = joinGameRoom;
+      document.getElementById('btn-start-game').onclick = startGame;
+
+      document.getElementById('setting-mode').onchange = (e) => {
+        const pingBox = document.getElementById('ping-interval-box');
+        if (e.target.value === 'ping') pingBox.classList.remove('hidden');
+        else pingBox.classList.add('hidden');
+      };
+
+      document.getElementById('btn-tag-hiders').onclick = openTagModal;
+      document.getElementById('btn-dismiss-banner').onclick = () => {
+        document.getElementById('notification-banner').classList.add('hidden');
+      };
+
+      document.getElementById('btn-open-rules').onclick = () => {
+        document.getElementById('modal-rules').classList.remove('hidden');
+      };
+      document.getElementById('btn-open-roster').onclick = () => {
+        document.getElementById('modal-roster').classList.remove('hidden');
+      };
+      document.querySelectorAll('.btn-close-modal').forEach(btn => {
+        btn.onclick = () => {
+          document.getElementById('modal-rules').classList.add('hidden');
+          document.getElementById('modal-roster').classList.add('hidden');
+          document.getElementById('modal-tag').classList.add('hidden');
+        };
       });
+
+      document.getElementById('btn-toggle-chat').onclick = () => {
+        document.getElementById('chat-drawer').classList.toggle('hidden');
+      };
+      document.getElementById('btn-close-chat').onclick = () => {
+        document.getElementById('chat-drawer').classList.add('hidden');
+      };
+      document.getElementById('chat-form').onsubmit = sendChatMessage;
     };
-
-    window.openRules = () => document.getElementById('modal-rules').classList.remove('hidden');
-    window.closeRules = () => document.getElementById('modal-rules').classList.add('hidden');
-    window.openHostModal = () => document.getElementById('modal-host').classList.remove('hidden');
-    window.closeHostModal = () => document.getElementById('modal-host').classList.add('hidden');
-
-    window.
+  </script>
+</body>
+</html>
