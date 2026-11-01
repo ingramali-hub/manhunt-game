@@ -223,44 +223,47 @@
       document.getElementById('btn-open-roster').onclick = () => document.getElementById('modal-roster').classList.remove('hidden');
       document.getElementById('btn-close-roster').onclick = () => document.getElementById('modal-roster').classList.add('hidden');
 
-      // Launch Room Handler (Alert removed so execution proceeds immediately)
+      // Fully instrumented Launch Room Handler with step-by-step alerts
       document.getElementById('btn-submit-create').onclick = async () => {
         try {
+          alert("Step 1: Click registered.");
           const nameInput = document.getElementById('player-name-input');
           const name = nameInput ? nameInput.value.trim() : "";
           if (!name) { alert("Please enter your player callsign/name first!"); return; }
           myPlayerName = name;
 
+          alert("Step 2: Name validated: " + name);
           if (!myPlayerId) {
+            alert("Step 3: Signing in anonymously...");
             const cred = await signInAnonymously(auth);
             myPlayerId = cred.user.uid;
           }
 
-          const durationEl = document.getElementById('setting-duration');
-          const modeEl = document.getElementById('setting-mode');
-          const radiusEl = document.getElementById('setting-radius');
-
-          const duration = durationEl ? parseInt(durationEl.value) || 30 : 30;
-          const gameMode = modeEl ? modeEl.value : 'proximity';
-          const radius = radiusEl ? parseInt(radiusEl.value) || 500 : 500;
+          alert("Step 4: Player ID ready: " + myPlayerId);
+          const duration = parseInt(document.getElementById('setting-duration').value) || 30;
+          const gameMode = document.getElementById('setting-mode').value;
+          const radius = parseInt(document.getElementById('setting-radius').value) || 500;
           
           const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
           currentRoomId = roomId;
           isHost = true;
 
+          alert("Step 5: Writing room doc to Firestore (Code: " + roomId + ")...");
           await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId), {
             roomId, hostId: myPlayerId, status: 'lobby', durationMinutes: duration, gameMode, boundaryRadius: radius, center: userLocation, startTime: null
           });
 
+          alert("Step 6: Writing player doc to Firestore...");
           await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`, myPlayerId), {
             id: myPlayerId, name, role: 'hider', isHost: true, isCaught: false, lat: userLocation.lat, lng: userLocation.lng, isOutOfBounds: false, lastUpdated: Date.now()
           });
 
+          alert("Step 7: Success! Opening waiting lobby.");
           subscribeToRoom(roomId);
           showLobbyScreen();
         } catch (err) {
           console.error("Launch error:", err);
-          alert("Error launching room: " + err.message);
+          alert("FATAL ERROR at Launch: " + err.message);
         }
       };
 
