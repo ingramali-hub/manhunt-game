@@ -16,13 +16,11 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <style>
-    /* Full height map & custom scrollbar styling */
     #map { height: 100%; width: 100%; z-index: 1; }
     .custom-scroll::-webkit-scrollbar { width: 4px; }
     .custom-scroll::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
     .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
     
-    /* Marker Pulse Animations */
     @keyframes pulse-ring {
       0% { transform: scale(0.8); opacity: 0.9; }
       100% { transform: scale(2.2); opacity: 0; }
@@ -43,34 +41,22 @@
       border: 3px solid #3b82f6;
       animation: pulse-ring 2s infinite;
     }
-    .oob-flash {
-      animation: flash-red 1s infinite alternate;
-    }
-    @keyframes flash-red {
-      from { background-color: rgba(239, 68, 68, 0.2); }
-      to { background-color: rgba(239, 68, 68, 0.6); }
-    }
   </style>
 </head>
 <body class="h-full flex flex-col font-sans antialiased select-none overflow-hidden bg-slate-950">
 
-  <!-- MAIN APP CONTAINER -->
   <div id="app" class="h-full flex flex-col relative overflow-hidden">
-
-    <!-- HEADER BAR -->
     <header class="bg-slate-900 border-b border-slate-800 px-4 py-2.5 flex items-center justify-between z-20 shadow-md">
       <div class="flex items-center space-x-2">
         <div class="bg-amber-500 text-slate-950 font-black px-2 py-0.5 rounded text-xs tracking-wider uppercase">MANHUNT</div>
         <div id="room-code-display" class="text-xs text-slate-400 font-mono hidden">ROOM: <span id="current-room-id" class="text-amber-400 font-bold">---</span></div>
       </div>
       
-      <!-- Timer & Mode Badge -->
       <div id="timer-display" class="hidden flex items-center bg-slate-800 px-3 py-1 rounded-full border border-slate-700 space-x-2">
         <i class="fa-solid fa-stopwatch text-amber-400 text-xs"></i>
         <span id="time-left" class="font-mono text-xs font-bold text-slate-200">00:00</span>
       </div>
 
-      <!-- Quick Actions -->
       <div class="flex items-center space-x-2">
         <button id="btn-open-rules" class="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg border border-slate-700 transition" title="View Rules">
           <i class="fa-solid fa-book text-sm"></i>
@@ -82,7 +68,6 @@
       </div>
     </header>
 
-    <!-- NOTIFICATION ALERT BANNER -->
     <div id="notification-banner" class="hidden bg-amber-500 text-slate-950 px-4 py-2 text-center text-xs font-bold transition-all duration-300 z-30 flex items-center justify-between shadow-lg">
       <span id="notification-text" class="truncate flex-1">Alert message</span>
       <button id="btn-dismiss-banner" class="ml-2 text-slate-950 hover:text-slate-800">
@@ -90,21 +75,16 @@
       </button>
     </div>
 
-    <!-- MAIN INTERACTIVE AREA -->
     <main class="flex-1 relative overflow-hidden">
-      
-      <!-- MAP VIEW PORT -->
       <div id="map-container" class="w-full h-full relative">
         <div id="map"></div>
 
-        <!-- Floating Role Status Badge -->
-        <div id="my-role-badge" class="hidden absolute top-3 left-3 z-[10] bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700 shadow-lg flex items-center space-x-2">
+        <div id="my-role-badge" class="hidden absolute top-3 left-3 z-[10] bg-slate-900/95 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-700 shadow-lg flex items-center space-x-2">
           <span id="role-indicator-dot" class="w-3 h-3 rounded-full bg-slate-400"></span>
           <span id="role-text" class="text-xs font-bold uppercase tracking-wider text-slate-200">SPECTATOR</span>
           <span id="oob-badge" class="hidden text-[10px] bg-red-600 text-white font-black px-1.5 py-0.5 rounded animate-pulse">EXPOSED (OOB)</span>
         </div>
 
-        <!-- Seeker Tag Floating Button -->
         <div id="tag-action-container" class="hidden absolute bottom-6 left-1/2 -translate-x-1/2 z-[10]">
           <button id="btn-tag-hiders" class="bg-red-600 hover:bg-red-500 active:scale-95 text-white font-bold py-3 px-6 rounded-full shadow-2xl border-2 border-white/20 flex items-center space-x-2 transition">
             <i class="fa-solid fa-crosshairs text-lg"></i>
@@ -113,17 +93,15 @@
         </div>
       </div>
 
-      <!-- LOBBY & INITIAL ENTRY OVERLAY -->
+      <!-- LOBBY SCREEN -->
       <div id="screen-lobby" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-40 flex flex-col p-4 overflow-y-auto">
         <div class="max-w-md w-full mx-auto my-auto space-y-6">
-          
           <div class="text-center space-y-2">
             <div class="inline-block bg-amber-500 text-slate-950 px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase">GPS MULTIPLAYER</div>
             <h1 class="text-3xl font-black tracking-tight text-white">MANHUNT GPS</h1>
             <p class="text-xs text-slate-400">Real-world hide & seek with dynamic geofencing & stealth radar</p>
           </div>
 
-          <!-- Join / Host Action Cards -->
           <div id="lobby-entry-card" class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
             <div>
               <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Player Callsign / Name</label>
@@ -131,16 +109,11 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3 pt-2">
-              <button id="btn-show-create" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm transition">
-                Create Room
-              </button>
-              <button id="btn-show-join" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl text-sm border border-slate-700 transition">
-                Join Room
-              </button>
+              <button id="btn-show-create" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm transition">Create Room</button>
+              <button id="btn-show-join" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl text-sm border border-slate-700 transition">Join Room</button>
             </div>
           </div>
 
-          <!-- Join Room Form -->
           <div id="join-form-card" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
             <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider">Join Room</h3>
             <div>
@@ -153,7 +126,6 @@
             </div>
           </div>
 
-          <!-- Host Options Form -->
           <div id="create-form-card" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
             <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider">Configure Match (Host)</h3>
             
@@ -179,7 +151,6 @@
               <div>
                 <label class="block text-xs text-slate-400 mb-1">Boundary Geofence Radius (Meters)</label>
                 <input type="number" id="setting-radius" value="500" step="50" min="100" max="5000" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200">
-                <p class="text-[10px] text-slate-500 mt-1">Geofence center locks to Host GPS position at start.</p>
               </div>
             </div>
 
@@ -189,7 +160,6 @@
             </div>
           </div>
 
-          <!-- Waiting Lobby -->
           <div id="waiting-lobby-card" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
@@ -215,73 +185,51 @@
             
             <p id="non-host-msg" class="text-center text-xs text-slate-500 italic">Waiting for host to pick roles and launch...</p>
           </div>
-
         </div>
       </div>
 
-      <!-- COMMS CHAT WIDGET -->
+      <!-- CHAT WIDGET -->
       <div id="chat-widget" class="absolute bottom-4 right-4 z-20 flex flex-col items-end">
-        
-        <!-- Chat Drawer -->
         <div id="chat-drawer" class="hidden bg-slate-900/95 border border-slate-800 backdrop-blur-md rounded-2xl w-80 h-96 shadow-2xl flex flex-col overflow-hidden mb-3">
           <div class="bg-slate-800/80 px-4 py-3 border-b border-slate-700/50 flex justify-between items-center">
             <div class="flex items-center space-x-2">
               <i class="fa-solid fa-tower-broadcast text-amber-400 text-xs"></i>
               <span id="chat-channel-title" class="text-xs font-bold text-slate-200 uppercase tracking-wider">Radio Channel</span>
             </div>
-            <button id="btn-close-chat" class="text-slate-400 hover:text-white">
-              <i class="fa-solid fa-chevron-down text-sm"></i>
-            </button>
+            <button id="btn-close-chat" class="text-slate-400 hover:text-white"><i class="fa-solid fa-chevron-down text-sm"></i></button>
           </div>
-
           <div id="chat-messages" class="flex-1 p-3 overflow-y-auto space-y-2 text-xs custom-scroll">
-            <div class="text-slate-500 text-center text-[11px]">Radio stream active. Speak wisely.</div>
+            <div class="text-slate-500 text-center text-[11px]">Radio stream active.</div>
           </div>
-
           <form id="chat-form" class="p-2 border-t border-slate-800 flex space-x-2 bg-slate-950">
-            <input type="text" id="chat-input" placeholder="Type transmission..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-600 focus:outline-none focus:border-amber-500">
-            <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs">
-              <i class="fa-solid fa-paper-plane"></i>
-            </button>
+            <input type="text" id="chat-input" placeholder="Type transmission..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+            <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs"><i class="fa-solid fa-paper-plane"></i></button>
           </form>
         </div>
-
         <button id="btn-toggle-chat" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-3.5 rounded-full shadow-2xl flex items-center justify-center transition border-2 border-slate-900">
           <i class="fa-solid fa-message text-base"></i>
         </button>
       </div>
-
     </main>
 
-    <!-- ROSTER SCOREBOARD MODAL -->
+    <!-- ROSTER MODAL -->
     <div id="modal-roster" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-5 space-y-4">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <h3 class="font-bold text-sm text-amber-400 uppercase tracking-wider">Tactical Roster</h3>
-          <button class="btn-close-modal text-slate-400 hover:text-white">
-            <i class="fa-solid fa-xmark text-base"></i>
-          </button>
+          <button class="btn-close-modal text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
         </div>
-
         <div class="space-y-4 max-h-[60vh] overflow-y-auto custom-scroll pr-1">
           <div>
-            <div class="text-[11px] font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center">
-              <i class="fa-solid fa-user-ninja mr-1.5"></i> Seekers (<span id="count-seekers">0</span>)
-            </div>
+            <div class="text-[11px] font-bold text-red-400 uppercase tracking-wider mb-2"><i class="fa-solid fa-user-ninja mr-1.5"></i> Seekers (<span id="count-seekers">0</span>)</div>
             <div id="roster-seekers" class="space-y-1"></div>
           </div>
-
           <div>
-            <div class="text-[11px] font-bold text-blue-400 uppercase tracking-wider mb-2 flex items-center">
-              <i class="fa-solid fa-user-shield mr-1.5"></i> Active Hiders (<span id="count-hiders">0</span>)
-            </div>
+            <div class="text-[11px] font-bold text-blue-400 uppercase tracking-wider mb-2"><i class="fa-solid fa-user-shield mr-1.5"></i> Active Hiders (<span id="count-hiders">0</span>)</div>
             <div id="roster-hiders" class="space-y-1"></div>
           </div>
-
           <div>
-            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center">
-              <i class="fa-solid fa-skull mr-1.5"></i> Caught & Reassigned (<span id="count-caught">0</span>)
-            </div>
+            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2"><i class="fa-solid fa-skull mr-1.5"></i> Caught (<span id="count-caught">0</span>)</div>
             <div id="roster-caught" class="space-y-1"></div>
           </div>
         </div>
@@ -293,39 +241,14 @@
       <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-5 space-y-4">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <h3 class="font-bold text-sm text-amber-400 uppercase tracking-wider">Rules of Engagement</h3>
-          <button class="btn-close-modal text-slate-400 hover:text-white">
-            <i class="fa-solid fa-xmark text-base"></i>
-          </button>
+          <button class="btn-close-modal text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
         </div>
-
         <div class="space-y-3 text-xs text-slate-300 leading-relaxed max-h-[60vh] overflow-y-auto custom-scroll pr-1">
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-            <span class="font-bold text-amber-400 block mb-1">1. Objective</span>
-            Hiders must stay un-tagged until the timer expires. Seekers must tag all hiders.
-          </div>
-
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-            <span class="font-bold text-amber-400 block mb-1">2. Radar Tracking Rules</span>
-            <ul class="list-disc pl-4 space-y-1 text-slate-400">
-              <li><b>Proximity Mode:</b> Seekers see Hiders on map UNTIL they get within 100 meters. Stealth automatically turns ON at close distance!</li>
-              <li><b>Ping Mode:</b> Hider coordinates are revealed on fixed time intervals (e.g. every 3 mins).</li>
-            </ul>
-          </div>
-
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-            <span class="font-bold text-red-400 block mb-1">3. Boundaries & Penalty</span>
-            Stay inside the red circle on the map! Stepping out of bounds triggers an alarm and forces your live location to be exposed to all Seekers.
-          </div>
-
-          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-            <span class="font-bold text-amber-400 block mb-1">4. Tagging & Dynamic Chat</span>
-            When physically tagged, Seekers select the caught hider. Caught hiders join the Seekers and switch to Seeker radio chat!
-          </div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800"><span class="font-bold text-amber-400 block mb-1">1. Objective</span>Hiders survive until timer ends. Seekers tag hiders.</div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800"><span class="font-bold text-amber-400 block mb-1">2. Radar Rules</span>Proximity mode hides hiders within 100m. Ping mode reveals location periodically.</div>
+          <div class="bg-slate-950 p-3 rounded-xl border border-slate-800"><span class="font-bold text-red-400 block mb-1">3. Boundaries</span>Stay inside the geofence circle or your location is exposed!</div>
         </div>
-
-        <button class="btn-close-modal w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs">
-          Return to Game
-        </button>
+        <button class="btn-close-modal w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl text-xs">Return to Game</button>
       </div>
     </div>
 
@@ -334,28 +257,20 @@
       <div class="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl shadow-2xl p-5 space-y-4">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <h3 class="font-bold text-sm text-red-400 uppercase tracking-wider"><i class="fa-solid fa-crosshairs mr-1"></i> Confirm Tag</h3>
-          <button class="btn-close-modal text-slate-400 hover:text-white">
-            <i class="fa-solid fa-xmark text-base"></i>
-          </button>
+          <button class="btn-close-modal text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-base"></i></button>
         </div>
         <p class="text-xs text-slate-400">Select the player you tagged:</p>
         <div id="tag-hider-list" class="space-y-2"></div>
       </div>
     </div>
-
   </div>
 
   <!-- FIREBASE MODULES -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { 
-      getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection 
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { 
-      getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    // Application Configuration & Globals with your Firebase project keys
     const appId = 'manhunt-game-2dc41';
     const firebaseConfig = {
       apiKey: "AIzaSyDd4L5crymw_eiaW14gECTEh8MySqyCkW8",
@@ -370,15 +285,12 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // App State Variables
-    let currentUser = null;
     let myPlayerId = null;
     let myPlayerName = "";
     let currentRoomId = null;
     let isHost = false;
     let myRole = "hider"; 
     let userLocation = { lat: 0, lng: 0, accuracy: 0 };
-    let watchPositionId = null;
     let map = null;
     let playerMarkers = {};
     let boundaryCircle = null;
@@ -390,7 +302,6 @@
     let unsubscribePlayers = null;
     let unsubscribeChat = null;
 
-    // Web Audio Synthesizer Beeps
     function playAudioTone(freq = 600, type = 'sine', duration = 0.2) {
       try {
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -406,24 +317,19 @@
       } catch (e) {}
     }
 
-    // Leaflet Map Initialization
     function initMap() {
       if (map) return;
       map = L.map('map', { zoomControl: false }).setView([51.505, -0.09], 15);
-
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         maxZoom: 19
       }).addTo(map);
-
       L.control.zoom({ position: 'topright' }).addTo(map);
     }
 
-    // Custom Map Icon Creation
     function createMarkerIcon(role, name, isMe, isCaught) {
       let bgColor = "#3b82f6";
       let iconClass = "fa-user-shield";
-      
       if (role === 'seeker') {
         bgColor = "#ef4444";
         iconClass = "fa-user-ninja";
@@ -431,124 +337,64 @@
         bgColor = "#64748b";
         iconClass = "fa-skull";
       }
-
       const pulseClass = (role === 'seeker') ? 'seeker-pulse' : 'hider-pulse';
       const border = isMe ? 'border-2 border-amber-400 scale-110' : 'border border-slate-900';
 
-      const html = `
-        <div class="relative flex flex-col items-center">
-          <div class="w-8 h-8 rounded-full ${bgColor} text-white flex items-center justify-center font-bold shadow-lg ${border} ${pulseClass}">
-            <i class="fa-solid ${iconClass} text-xs"></i>
-          </div>
-          <span class="bg-slate-950/90 text-[10px] text-white px-1.5 py-0.5 rounded font-bold mt-1 shadow truncate max-w-[80px] border border-slate-800">
-            ${isMe ? 'YOU' : name}
-          </span>
-        </div>
-      `;
-
       return L.divIcon({
-        html: html,
+        html: `<div class="relative flex flex-col items-center"><div class="w-8 h-8 rounded-full ${bgColor} text-white flex items-center justify-center font-bold shadow-lg ${border} ${pulseClass}"><i class="fa-solid ${iconClass} text-xs"></i></div><span class="bg-slate-950/90 text-[10px] text-white px-1.5 py-0.5 rounded font-bold mt-1 shadow truncate max-w-[80px] border border-slate-800">${isMe ? 'YOU' : name}</span></div>`,
         className: 'custom-map-pin',
         iconSize: [32, 48],
         iconAnchor: [16, 24]
       });
     }
 
-    // GPS Tracking
     function startLocationTracking() {
-      if (!navigator.geolocation) {
-        showNotification("Geolocation is not supported by your browser");
-        return;
-      }
-
-      watchPositionId = navigator.geolocation.watchPosition(
-        (pos) => {
-          userLocation.lat = pos.coords.latitude;
-          userLocation.lng = pos.coords.longitude;
-          userLocation.accuracy = pos.coords.accuracy;
-
-          if (map && !window.hasCenteredMap) {
-            map.setView([userLocation.lat, userLocation.lng], 16);
-            window.hasCenteredMap = true;
-          }
-
-          checkBoundaryAndSync();
-        },
-        (err) => {
-          console.warn("GPS Warning:", err);
-          showNotification("Location permissions needed for tracking.");
-        },
-        { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
-      );
+      if (!navigator.geolocation) return;
+      navigator.geolocation.watchPosition((pos) => {
+        userLocation.lat = pos.coords.latitude;
+        userLocation.lng = pos.coords.longitude;
+        userLocation.accuracy = pos.coords.accuracy;
+        if (map && !window.hasCenteredMap) {
+          map.setView([userLocation.lat, userLocation.lng], 16);
+          window.hasCenteredMap = true;
+        }
+        checkBoundaryAndSync();
+      }, (err) => {}, { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 });
     }
 
-    // Distance Calculation (Haversine Formula)
     function getDistanceMeters(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
-      const φ1 = lat1 * Math.PI / 180;
-      const φ2 = lat2 * Math.PI / 180;
-      const Δφ = (lat2 - lat1) * Math.PI / 180;
-      const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
+      const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180, Δλ = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(Δφ/2)**2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2)**2;
+      return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
-    // Geofence Boundary Check & Position Sync
     async function checkBoundaryAndSync() {
       if (!currentRoomId || !myPlayerId || !roomData || roomData.status !== 'playing') return;
-
       if (roomData.center) {
-        const distToCenter = getDistanceMeters(
-          userLocation.lat, userLocation.lng,
-          roomData.center.lat, roomData.center.lng
-        );
-
-        const wasOutOfBounds = isOutOfBounds;
-        isOutOfBounds = distToCenter > roomData.boundaryRadius;
-
+        const dist = getDistanceMeters(userLocation.lat, userLocation.lng, roomData.center.lat, roomData.center.lng);
+        const wasOOB = isOutOfBounds;
+        isOutOfBounds = dist > roomData.boundaryRadius;
         const badge = document.getElementById('oob-badge');
         if (isOutOfBounds) {
           badge.classList.remove('hidden');
-          if (!wasOutOfBounds) {
-            playAudioTone(900, 'sawtooth', 0.4);
-            showNotification("WARNING: Out of Bounds! Location exposed to Seekers!");
-          }
-        } else {
-          badge.classList.add('hidden');
-        }
+          if (!wasOOB) { playAudioTone(900, 'sawtooth', 0.4); showNotification("WARNING: Out of Bounds!"); }
+        } else { badge.classList.add('hidden'); }
       }
-
       try {
-        const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, myPlayerId);
-        await updateDoc(playerRef, {
-          lat: userLocation.lat,
-          lng: userLocation.lng,
-          isOutOfBounds: isOutOfBounds,
-          lastUpdated: Date.now()
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, myPlayerId), {
+          lat: userLocation.lat, lng: userLocation.lng, isOutOfBounds: isOutOfBounds, lastUpdated: Date.now()
         });
-      } catch (err) {
-        console.error("Position update error:", err);
-      }
+      } catch (e) {}
     }
 
-    // Firebase Auth Initialization
     async function initAuth() {
-      try {
-        await signInAnonymously(auth);
-      } catch (e) {
-        console.error("Auth error:", e);
-      }
+      try { await signInAnonymously(auth); } catch (e) {}
     }
 
     onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        myPlayerId = user.uid;
-      }
+      if (user) { myPlayerId = user.uid; }
     });
 
     function generateRoomCode() {
@@ -558,7 +404,6 @@
       return code;
     }
 
-    // Create Room
     async function createGameRoom() {
       const name = document.getElementById('player-name-input').value.trim();
       if (!name) { alert("Please enter a callsign!"); return; }
@@ -568,28 +413,14 @@
       const gameMode = document.getElementById('setting-mode').value;
       const pingInterval = parseInt(document.getElementById('setting-ping-interval').value) || 3;
       const radius = parseInt(document.getElementById('setting-radius').value) || 500;
-
       const roomId = generateRoomCode();
       currentRoomId = roomId;
       isHost = true;
 
-      const center = {
-        lat: userLocation.lat || 51.505,
-        lng: userLocation.lng || -0.09
-      };
+      const center = { lat: userLocation.lat || 51.505, lng: userLocation.lng || -0.09 };
 
-      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId);
-      await setDoc(roomRef, {
-        roomId: roomId,
-        hostId: myPlayerId,
-        status: 'lobby',
-        durationMinutes: duration,
-        gameMode: gameMode,
-        pingIntervalMinutes: pingInterval,
-        boundaryRadius: radius,
-        center: center,
-        startTime: null,
-        createdAt: Date.now()
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId), {
+        roomId, hostId: myPlayerId, status: 'lobby', durationMinutes: duration, gameMode, pingIntervalMinutes: pingInterval, boundaryRadius: radius, center, startTime: null, createdAt: Date.now()
       });
 
       await registerPlayerDoc(roomId, name, true);
@@ -597,24 +428,17 @@
       showLobbyScreen();
     }
 
-    // Join Room
     async function joinGameRoom() {
       const name = document.getElementById('player-name-input').value.trim();
       const code = document.getElementById('join-room-code').value.trim().toUpperCase();
-
-      if (!name || !code) { alert("Please complete name and code fields!"); return; }
+      if (!name || !code) { alert("Complete name and code fields!"); return; }
 
       myPlayerName = name;
       currentRoomId = code;
       isHost = false;
 
-      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', code);
-      const snap = await getDoc(roomRef);
-
-      if (!snap.exists()) {
-        alert("Room code invalid or expired.");
-        return;
-      }
+      const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', code));
+      if (!snap.exists()) { alert("Room code invalid or expired."); return; }
 
       await registerPlayerDoc(code, name, false);
       subscribeToRoom(code);
@@ -622,48 +446,27 @@
     }
 
     async function registerPlayerDoc(roomId, name, hostFlag) {
-      const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`, myPlayerId);
-      await setDoc(playerRef, {
-        id: myPlayerId,
-        name: name,
-        role: 'hider',
-        isHost: hostFlag,
-        isCaught: false,
-        lat: userLocation.lat || 0,
-        lng: userLocation.lng || 0,
-        isOutOfBounds: false,
-        lastUpdated: Date.now()
+      await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`, myPlayerId), {
+        id: myPlayerId, name, role: 'hider', isHost: hostFlag, isCaught: false, lat: userLocation.lat || 0, lng: userLocation.lng || 0, isOutOfBounds: false, lastUpdated: Date.now()
       });
     }
 
-    // Firestore Observers
     function subscribeToRoom(roomId) {
       if (unsubscribeRoom) unsubscribeRoom();
       if (unsubscribePlayers) unsubscribePlayers();
       if (unsubscribeChat) unsubscribeChat();
 
-      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId);
-      unsubscribeRoom = onSnapshot(roomRef, (snap) => {
-        if (snap.exists()) {
-          roomData = snap.data();
-          updateGameUIFromRoomData();
-        }
+      unsubscribeRoom = onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId), (snap) => {
+        if (snap.exists()) { roomData = snap.data(); updateGameUIFromRoomData(); }
       });
 
-      const playersCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`);
-      unsubscribePlayers = onSnapshot(playersCol, (snap) => {
+      unsubscribePlayers = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`), (snap) => {
         roomPlayers = {};
-        snap.forEach(doc => { roomPlayers[doc.id] = doc.data(); });
-
-        if (roomPlayers[myPlayerId]) {
-          const newRole = roomPlayers[myPlayerId].role;
-          if (newRole !== myRole) {
-            myRole = newRole;
-            showNotification(`Role updated: You are now a ${myRole.toUpperCase()}`);
-            playAudioTone(800, 'triangle', 0.3);
-          }
+        snap.forEach(d => { roomPlayers[d.id] = d.data(); });
+        if (roomPlayers[myPlayerId] && roomPlayers[myPlayerId].role !== myRole) {
+          myRole = roomPlayers[myPlayerId].role;
+          showNotification(`Role updated: You are now a ${myRole.toUpperCase()}`);
         }
-
         updateLobbyPlayersList();
         updateRosterUI();
         renderMapMarkers();
@@ -672,37 +475,25 @@
       subscribeToChat(roomId);
     }
 
-    // Role Assignment Randomizer
     async function startGame() {
       if (!isHost || !currentRoomId) return;
-
       const playerIds = Object.keys(roomPlayers);
-      if (playerIds.length < 1) {
-        alert("At least 1 player required to start!");
-        return;
-      }
+      if (playerIds.length < 1) { alert("At least 1 player required!"); return; }
 
       const numSeekers = Math.max(1, Math.floor(playerIds.length / 3));
       const shuffled = [...playerIds].sort(() => 0.5 - Math.random());
       const seekerIds = new Set(shuffled.slice(0, numSeekers));
 
       for (const id of playerIds) {
-        const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, id);
-        const assignedRole = seekerIds.has(id) ? 'seeker' : 'hider';
-        await updateDoc(playerRef, {
-          role: assignedRole,
-          isCaught: false
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, id), {
+          role: seekerIds.has(id) ? 'seeker' : 'hider', isCaught: false
         });
       }
 
-      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', currentRoomId);
-      await updateDoc(roomRef, {
-        status: 'playing',
-        startTime: Date.now(),
-        center: { lat: userLocation.lat || 51.505, lng: userLocation.lng || -0.09 }
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', currentRoomId), {
+        status: 'playing', startTime: Date.now(), center: { lat: userLocation.lat || 51.505, lng: userLocation.lng || -0.09 }
       });
-
-      showNotification("MATCH STARTED! Check your radar!");
+      showNotification("MATCH STARTED!");
     }
 
     function showLobbyScreen() {
@@ -711,7 +502,6 @@
       document.getElementById('join-form-card').classList.add('hidden');
       document.getElementById('create-form-card').classList.add('hidden');
       document.getElementById('waiting-lobby-card').classList.remove('hidden');
-
       document.getElementById('room-code-display').classList.remove('hidden');
       document.getElementById('current-room-id').innerText = currentRoomId;
       document.getElementById('lobby-room-code').innerText = currentRoomId;
@@ -735,21 +525,14 @@
 
       playersArr.forEach(p => {
         const item = document.createElement('div');
-        item.className = "flex items-center justify-between bg-slate-950 px-3 py-2 rounded-xl border border-slate-800/80 text-xs";
-        item.innerHTML = `
-          <div class="flex items-center space-x-2">
-            <span class="w-2 h-2 rounded-full ${p.isHost ? 'bg-amber-400' : 'bg-slate-600'}"></span>
-            <span class="font-bold text-slate-200">${p.name} ${p.id === myPlayerId ? '(You)' : ''}</span>
-          </div>
-          ${p.isHost ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold">HOST</span>' : ''}
-        `;
+        item.className = "flex items-center justify-between bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs";
+        item.innerHTML = `<div class="flex items-center space-x-2"><span class="w-2 h-2 rounded-full ${p.isHost ? 'bg-amber-400' : 'bg-slate-600'}"></span><span class="font-bold text-slate-200">${p.name} ${p.id === myPlayerId ? '(You)' : ''}</span></div>${p.isHost ? '<span class="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded font-bold">HOST</span>' : ''}`;
         listEl.appendChild(item);
       });
     }
 
     function updateGameUIFromRoomData() {
       if (!roomData) return;
-
       if (roomData.status === 'playing') {
         document.getElementById('screen-lobby').classList.add('hidden');
         document.getElementById('timer-display').classList.remove('hidden');
@@ -757,273 +540,106 @@
         if (roomData.center && roomData.boundaryRadius) {
           if (boundaryCircle) map.removeLayer(boundaryCircle);
           boundaryCircle = L.circle([roomData.center.lat, roomData.center.lng], {
-            color: '#ef4444',
-            fillColor: '#ef4444',
-            fillOpacity: 0.08,
-            radius: roomData.boundaryRadius,
-            dashArray: '6, 8',
-            weight: 2
+            color: '#ef4444', fillColor: '#ef4444', fillOpacity: 0.08, radius: roomData.boundaryRadius, dashArray: '6, 8', weight: 2
           }).addTo(map);
         }
 
-        if (myRole === 'seeker') {
-          document.getElementById('tag-action-container').classList.remove('hidden');
-        } else {
-          document.getElementById('tag-action-container').classList.add('hidden');
-        }
+        if (myRole === 'seeker') document.getElementById('tag-action-container').classList.remove('hidden');
+        else document.getElementById('tag-action-container').classList.add('hidden');
 
         const roleText = document.getElementById('role-text');
         const roleDot = document.getElementById('role-indicator-dot');
-        
-        if (myRole === 'seeker') {
-          roleText.innerText = 'SEEKER';
-          roleDot.className = 'w-3 h-3 rounded-full bg-red-500 animate-pulse';
-        } else if (myRole === 'hider') {
-          roleText.innerText = 'HIDER';
-          roleDot.className = 'w-3 h-3 rounded-full bg-blue-500 animate-pulse';
-        } else {
-          roleText.innerText = 'REASSIGNED SEEKER';
-          roleDot.className = 'w-3 h-3 rounded-full bg-slate-500';
-        }
+        if (myRole === 'seeker') { roleText.innerText = 'SEEKER'; roleDot.className = 'w-3 h-3 rounded-full bg-red-500 animate-pulse'; }
+        else { roleText.innerText = 'HIDER'; roleDot.className = 'w-3 h-3 rounded-full bg-blue-500 animate-pulse'; }
         document.getElementById('my-role-badge').classList.remove('hidden');
-
-        startTimerCountdown();
       }
     }
 
-    function startTimerCountdown() {
-      if (window.gameTimerInterval) clearInterval(window.gameTimerInterval);
-      
-      window.gameTimerInterval = setInterval(() => {
-        if (!roomData || !roomData.startTime) return;
-
-        const totalMs = roomData.durationMinutes * 60 * 1000;
-        const elapsedMs = Date.now() - roomData.startTime;
-        const remainingMs = Math.max(0, totalMs - elapsedMs);
-
-        const mins = Math.floor(remainingMs / 60000);
-        const secs = Math.floor((remainingMs % 60000) / 1000);
-
-        document.getElementById('time-left').innerText = 
-          `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-
-        if (remainingMs <= 0) {
-          clearInterval(window.gameTimerInterval);
-          showNotification("TIME EXPIRED! Game Over!");
-        }
-      }, 1000);
-    }
-
-    // Map Rendering & Proximity / Ping Mechanics
     function renderMapMarkers() {
       if (!map || roomData?.status !== 'playing') return;
-
       const players = Object.values(roomPlayers);
       const seekerList = players.filter(p => p.role === 'seeker');
 
       players.forEach(p => {
         const isMe = p.id === myPlayerId;
-        let shouldShowOnMap = false;
-
-        if (isMe || p.role === 'seeker') {
-          shouldShowOnMap = true;
-        } else if (p.isOutOfBounds) {
-          shouldShowOnMap = true;
-        } else if (p.role === 'hider' && !p.isCaught) {
-          if (myRole === 'hider') {
-            shouldShowOnMap = true;
-          } else {
-            if (roomData.gameMode === 'proximity') {
-              let nearestSeekerDist = Infinity;
-              seekerList.forEach(s => {
-                const d = getDistanceMeters(p.lat, p.lng, s.lat, s.lng);
-                if (d < nearestSeekerDist) nearestSeekerDist = d;
-              });
-              shouldShowOnMap = (nearestSeekerDist > 100);
-            } else if (roomData.gameMode === 'ping') {
-              const now = Date.now();
-              const pingMs = (roomData.pingIntervalMinutes || 3) * 60 * 1000;
-              const lastPingWindow = Math.floor((now - roomData.startTime) / pingMs);
-              const playerLastPingWindow = Math.floor((p.lastUpdated - roomData.startTime) / pingMs);
-              shouldShowOnMap = (playerLastPingWindow >= lastPingWindow);
-            }
+        let show = isMe || p.role === 'seeker' || p.isOutOfBounds;
+        if (!show && p.role === 'hider' && !p.isCaught) {
+          if (myRole === 'hider') show = true;
+          else {
+            let minDist = Infinity;
+            seekerList.forEach(s => { const d = getDistanceMeters(p.lat, p.lng, s.lat, s.lng); if (d < minDist) minDist = d; });
+            show = (minDist > 100);
           }
         }
 
-        if (shouldShowOnMap && p.lat && p.lng) {
+        if (show && p.lat && p.lng) {
           const icon = createMarkerIcon(p.role, p.name, isMe, p.isCaught);
-          if (playerMarkers[p.id]) {
-            playerMarkers[p.id].setLatLng([p.lat, p.lng]);
-            playerMarkers[p.id].setIcon(icon);
-          } else {
-            playerMarkers[p.id] = L.marker([p.lat, p.lng], { icon: icon }).addTo(map);
-          }
-        } else {
-          if (playerMarkers[p.id]) {
-            map.removeLayer(playerMarkers[p.id]);
-            delete playerMarkers[p.id];
-          }
-        }
+          if (playerMarkers[p.id]) { playerMarkers[p.id].setLatLng([p.lat, p.lng]); playerMarkers[p.id].setIcon(icon); }
+          else { playerMarkers[p.id] = L.marker([p.lat, p.lng], { icon }).addTo(map); }
+        } else if (playerMarkers[p.id]) { map.removeLayer(playerMarkers[p.id]); delete playerMarkers[p.id]; }
       });
     }
 
-    // Scoreboard Update
     function updateRosterUI() {
-      const seekersContainer = document.getElementById('roster-seekers');
-      const hidersContainer = document.getElementById('roster-hiders');
-      const caughtContainer = document.getElementById('roster-caught');
-
-      seekersContainer.innerHTML = '';
-      hidersContainer.innerHTML = '';
-      caughtContainer.innerHTML = '';
-
+      const sBox = document.getElementById('roster-seekers'), hBox = document.getElementById('roster-hiders'), cBox = document.getElementById('roster-caught');
+      sBox.innerHTML = ''; hBox.innerHTML = ''; cBox.innerHTML = '';
       const players = Object.values(roomPlayers);
       document.getElementById('roster-count').innerText = players.length;
 
-      let countS = 0, countH = 0, countC = 0;
-
+      let cS = 0, cH = 0, cC = 0;
       players.forEach(p => {
         const item = document.createElement('div');
         item.className = "flex items-center justify-between bg-slate-950 px-3 py-2 rounded-xl border border-slate-800 text-xs";
-        const badge = p.isOutOfBounds ? '<span class="text-[9px] bg-red-600/30 text-red-400 font-bold px-1.5 py-0.5 rounded ml-2">OOB</span>' : '';
-
-        item.innerHTML = `
-          <span class="font-bold text-slate-200">${p.name} ${p.id === myPlayerId ? '(You)' : ''} ${badge}</span>
-          <span class="text-[10px] text-slate-500 uppercase font-mono">${p.role}</span>
-        `;
-
-        if (p.role === 'seeker') {
-          seekersContainer.appendChild(item);
-          countS++;
-        } else if (p.isCaught) {
-          caughtContainer.appendChild(item);
-          countC++;
-        } else {
-          hidersContainer.appendChild(item);
-          countH++;
-        }
+        item.innerHTML = `<span class="font-bold text-slate-200">${p.name} ${p.id === myPlayerId ? '(You)' : ''}</span><span class="text-[10px] text-slate-500 uppercase font-mono">${p.role}</span>`;
+        if (p.role === 'seeker') { sBox.appendChild(item); cS++; }
+        else if (p.isCaught) { cBox.appendChild(item); cC++; }
+        else { hBox.appendChild(item); cH++; }
       });
-
-      document.getElementById('count-seekers').innerText = countS;
-      document.getElementById('count-hiders').innerText = countH;
-      document.getElementById('count-caught').innerText = countC;
+      document.getElementById('count-seekers').innerText = cS;
+      document.getElementById('count-hiders').innerText = cH;
+      document.getElementById('count-caught').innerText = cC;
     }
 
-    // Tag Player Modal Functionality
     function openTagModal() {
       const container = document.getElementById('tag-hider-list');
       container.innerHTML = '';
-
-      const hiders = Object.values(roomPlayers).filter(p => p.role === 'hider' && !p.isCaught);
-
-      if (hiders.length === 0) {
-        container.innerHTML = `<div class="text-xs text-slate-500 text-center py-2">No active hiders remaining!</div>`;
-      } else {
-        hiders.forEach(h => {
-          const btn = document.createElement('button');
-          btn.className = "w-full bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 font-bold py-2.5 px-3 rounded-xl text-xs flex justify-between items-center transition";
-          btn.innerHTML = `<span>TAG ${h.name.toUpperCase()}</span> <i class="fa-solid fa-skull"></i>`;
-          btn.onclick = () => confirmTagPlayer(h.id, h.name);
-          container.appendChild(btn);
-        });
-      }
-
+      Object.values(roomPlayers).filter(p => p.role === 'hider' && !p.isCaught).forEach(h => {
+        const btn = document.createElement('button');
+        btn.className = "w-full bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 font-bold py-2.5 px-3 rounded-xl text-xs flex justify-between items-center";
+        btn.innerHTML = `<span>TAG ${h.name.toUpperCase()}</span> <i class="fa-solid fa-skull"></i>`;
+        btn.onclick = async () => {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, h.id), { role: 'seeker', isCaught: true });
+          document.getElementById('modal-tag').classList.add('hidden');
+          showNotification(`Player Caught: ${h.name}!`);
+        };
+        container.appendChild(btn);
+      });
       document.getElementById('modal-tag').classList.remove('hidden');
     }
 
-    async function confirmTagPlayer(hiderId, hiderName) {
-      if (!currentRoomId) return;
-
-      const playerRef = doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, hiderId);
-      await updateDoc(playerRef, {
-        role: 'seeker',
-        isCaught: true
-      });
-
-      document.getElementById('modal-tag').classList.add('hidden');
-      showNotification(`PLAYER CAUGHT: ${hiderName} has been converted to Seeker!`);
-      playAudioTone(400, 'sawtooth', 0.3);
-
-      const remainingHiders = Object.values(roomPlayers).filter(p => p.role === 'hider' && p.id !== hiderId);
-      if (remainingHiders.length === 0) {
-        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', currentRoomId);
-        await updateDoc(roomRef, { status: 'ended' });
-        alert("SEEKERS WIN! All hiders captured!");
-      }
-    }
-
-    // Role-Based Radio Chat
     function subscribeToChat(roomId) {
-      const chatCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_chat`);
-      unsubscribeChat = onSnapshot(chatCol, (snap) => {
+      unsubscribeChat = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_chat`), (snap) => {
         const msgs = [];
         snap.forEach(d => msgs.push(d.data()));
         msgs.sort((a, b) => a.timestamp - b.timestamp);
-        renderChatMessages(msgs);
+        const container = document.getElementById('chat-messages');
+        const channel = (myRole === 'seeker') ? 'seeker' : 'hider';
+        container.innerHTML = '';
+        msgs.filter(m => m.channel === channel || m.channel === 'all').forEach(m => {
+          const div = document.createElement('div');
+          div.className = `flex flex-col ${m.senderId === myPlayerId ? 'items-end' : 'items-start'}`;
+          div.innerHTML = `<div class="text-[9px] text-slate-500 mb-0.5">${m.senderName}</div><div class="px-3 py-1.5 rounded-2xl max-w-[85%] text-xs ${m.senderId === myPlayerId ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-100'}">${m.text}</div>`;
+          container.appendChild(div);
+        });
+        container.scrollTop = container.scrollHeight;
       });
-    }
-
-    function renderChatMessages(msgs) {
-      const container = document.getElementById('chat-messages');
-      const channelTitle = document.getElementById('chat-channel-title');
-      
-      const channelRole = (myRole === 'seeker' || myRole === 'caught') ? 'seeker' : 'hider';
-      channelTitle.innerText = `${channelRole.toUpperCase()} RADIO`;
-      channelTitle.className = `text-xs font-bold uppercase tracking-wider ${channelRole === 'seeker' ? 'text-red-400' : 'text-blue-400'}`;
-
-      container.innerHTML = '';
-      const visibleMsgs = msgs.filter(m => m.channel === channelRole || m.channel === 'all');
-
-      visibleMsgs.forEach(m => {
-        const isMe = m.senderId === myPlayerId;
-        const div = document.createElement('div');
-        div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
-
-        div.innerHTML = `
-          <div class="text-[9px] text-slate-500 mb-0.5">${m.senderName}</div>
-          <div class="px-3 py-1.5 rounded-2xl max-w-[85%] break-words ${
-            isMe 
-              ? 'bg-amber-500 text-slate-950 font-medium rounded-br-none' 
-              : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700'
-          }">
-            ${m.text}
-          </div>
-        `;
-        container.appendChild(div);
-      });
-
-      container.scrollTop = container.scrollHeight;
-    }
-
-    async function sendChatMessage(e) {
-      e.preventDefault();
-      const input = document.getElementById('chat-input');
-      const text = input.value.trim();
-      if (!text || !currentRoomId) return;
-
-      const channelRole = (myRole === 'seeker' || myRole === 'caught') ? 'seeker' : 'hider';
-      const chatCol = collection(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_chat`);
-      const msgDoc = doc(chatCol);
-
-      await setDoc(msgDoc, {
-        senderId: myPlayerId,
-        senderName: myPlayerName,
-        text: text,
-        channel: channelRole,
-        timestamp: Date.now()
-      });
-
-      input.value = '';
     }
 
     function showNotification(msg) {
       const banner = document.getElementById('notification-banner');
       document.getElementById('notification-text').innerText = msg;
       banner.classList.remove('hidden');
-
-      setTimeout(() => {
-        banner.classList.add('hidden');
-      }, 5000);
+      setTimeout(() => banner.classList.add('hidden'), 5000);
     }
 
     window.onload = async () => {
@@ -1031,60 +647,37 @@
       startLocationTracking();
       await initAuth();
 
-      // UI Listeners
-      document.getElementById('btn-show-create').onclick = () => {
-        document.getElementById('lobby-entry-card').classList.add('hidden');
-        document.getElementById('create-form-card').classList.remove('hidden');
-      };
-      document.getElementById('btn-show-join').onclick = () => {
-        document.getElementById('lobby-entry-card').classList.add('hidden');
-        document.getElementById('join-form-card').classList.remove('hidden');
-      };
-      document.getElementById('btn-back-entry-1').onclick = () => {
-        document.getElementById('join-form-card').classList.add('hidden');
-        document.getElementById('lobby-entry-card').classList.remove('hidden');
-      };
-      document.getElementById('btn-back-entry-2').onclick = () => {
-        document.getElementById('create-form-card').classList.add('hidden');
-        document.getElementById('lobby-entry-card').classList.remove('hidden');
-      };
+      document.getElementById('btn-show-create').onclick = () => { document.getElementById('lobby-entry-card').classList.add('hidden'); document.getElementById('create-form-card').classList.remove('hidden'); };
+      document.getElementById('btn-show-join').onclick = () => { document.getElementById('lobby-entry-card').classList.add('hidden'); document.getElementById('join-form-card').classList.remove('hidden'); };
+      document.getElementById('btn-back-entry-1').onclick = () => { document.getElementById('join-form-card').classList.add('hidden'); document.getElementById('lobby-entry-card').classList.remove('hidden'); };
+      document.getElementById('btn-back-entry-2').onclick = () => { document.getElementById('create-form-card').classList.add('hidden'); document.getElementById('lobby-entry-card').classList.remove('hidden'); };
 
       document.getElementById('btn-submit-create').onclick = createGameRoom;
       document.getElementById('btn-submit-join').onclick = joinGameRoom;
       document.getElementById('btn-start-game').onclick = startGame;
-
-      document.getElementById('setting-mode').onchange = (e) => {
-        const pingBox = document.getElementById('ping-interval-box');
-        if (e.target.value === 'ping') pingBox.classList.remove('hidden');
-        else pingBox.classList.add('hidden');
-      };
-
       document.getElementById('btn-tag-hiders').onclick = openTagModal;
-      document.getElementById('btn-dismiss-banner').onclick = () => {
-        document.getElementById('notification-banner').classList.add('hidden');
-      };
 
-      document.getElementById('btn-open-rules').onclick = () => {
-        document.getElementById('modal-rules').classList.remove('hidden');
-      };
-      document.getElementById('btn-open-roster').onclick = () => {
-        document.getElementById('modal-roster').classList.remove('hidden');
-      };
-      document.querySelectorAll('.btn-close-modal').forEach(btn => {
-        btn.onclick = () => {
-          document.getElementById('modal-rules').classList.add('hidden');
-          document.getElementById('modal-roster').classList.add('hidden');
-          document.getElementById('modal-tag').classList.add('hidden');
-        };
+      document.getElementById('btn-open-rules').onclick = () => document.getElementById('modal-rules').classList.remove('hidden');
+      document.getElementById('btn-open-roster').onclick = () => document.getElementById('modal-roster').classList.remove('hidden');
+      document.querySelectorAll('.btn-close-modal').forEach(b => b.onclick = () => {
+        document.getElementById('modal-rules').classList.add('hidden');
+        document.getElementById('modal-roster').classList.add('hidden');
+        document.getElementById('modal-tag').classList.add('hidden');
       });
 
-      document.getElementById('btn-toggle-chat').onclick = () => {
-        document.getElementById('chat-drawer').classList.toggle('hidden');
+      document.getElementById('btn-toggle-chat').onclick = () => document.getElementById('chat-drawer').classList.toggle('hidden');
+      document.getElementById('btn-close-chat').onclick = () => document.getElementById('chat-drawer').classList.add('hidden');
+      document.getElementById('chat-form').onsubmit = async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text || !currentRoomId) return;
+        const channel = (myRole === 'seeker') ? 'seeker' : 'hider';
+        await setDoc(doc(collection(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_chat`)), {
+          senderId: myPlayerId, senderName: myPlayerName, text, channel, timestamp: Date.now()
+        });
+        input.value = '';
       };
-      document.getElementById('btn-close-chat').onclick = () => {
-        document.getElementById('chat-drawer').classList.add('hidden');
-      };
-      document.getElementById('chat-form').onsubmit = sendChatMessage;
     };
   </script>
 </body>
