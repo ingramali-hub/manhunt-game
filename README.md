@@ -1,2 +1,2 @@
 # manhunt-game
-ManHutn Game
+ManHunt Game
