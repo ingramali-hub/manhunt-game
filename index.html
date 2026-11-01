@@ -156,7 +156,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const appId = 'manhunt-game-2dc41';
     const firebaseConfig = {
@@ -180,6 +180,13 @@
     let map = null;
     let roomPlayers = {};
 
+    // Ensure Auth session is tracked immediately
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        myPlayerId = user.uid;
+      }
+    });
+
     window.addEventListener('DOMContentLoaded', () => {
       map = L.map('map', { zoomControl: false }).setView([51.505, -0.09], 15);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(map);
@@ -191,7 +198,8 @@
         }, () => {}, { enableHighAccuracy: true });
       }
 
-      signInAnonymously(auth).then(cred => { myPlayerId = cred.user.uid; });
+      // Trigger anonymous login immediately
+      signInAnonymously(auth).catch(err => console.error("Auth failed:", err));
 
       document.getElementById('btn-show-create').onclick = () => {
         document.getElementById('lobby-entry-card').classList.add('hidden');
@@ -219,124 +227,10 @@
       document.getElementById('btn-open-roster').onclick = () => document.getElementById('modal-roster').classList.remove('hidden');
       document.getElementById('btn-close-roster').onclick = () => document.getElementById('modal-roster').classList.add('hidden');
 
-      // Launch Room Handler with error catching
+      // Launch Room Handler with automatic Auth fallback
       document.getElementById('btn-submit-create').onclick = async () => {
         try {
           const nameInput = document.getElementById('player-name-input');
           const name = nameInput ? nameInput.value.trim() : "";
-          if (!name) { alert("Please enter a callsign!"); return; }
+          if (!name) { alert("Please enter a callsign/name first!"); return; }
           myPlayerName = name;
-
-          const durationEl = document.getElementById('setting-duration');
-          const modeEl = document.getElementById('setting-mode');
-          const radiusEl = document.getElementById('setting-radius');
-
-          const duration = durationEl ? parseInt(durationEl.value) || 30 : 30;
-          const gameMode = modeEl ? modeEl.value : 'proximity';
-          const radius = radiusEl ? parseInt(radiusEl.value) || 500 : 500;
-          
-          const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
-          currentRoomId = roomId;
-          isHost = true;
-
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId), {
-            roomId, hostId: myPlayerId, status: 'lobby', durationMinutes: duration, gameMode, boundaryRadius: radius, center: userLocation, startTime: null
-          });
-
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`, myPlayerId), {
-            id: myPlayerId, name, role: 'hider', isHost: true, isCaught: false, lat: userLocation.lat, lng: userLocation.lng, isOutOfBounds: false, lastUpdated: Date.now()
-          });
-
-          subscribeToRoom(roomId);
-          showLobbyScreen();
-        } catch (err) {
-          console.error("Launch error:", err);
-          alert("Error launching room: " + err.message);
-        }
-      };
-
-      document.getElementById('btn-submit-join').onclick = async () => {
-        try {
-          const name = document.getElementById('player-name-input').value.trim();
-          const code = document.getElementById('join-room-code').value.trim().toUpperCase();
-          if (!name || !code) { alert("Complete name and room code!"); return; }
-
-          myPlayerName = name;
-          currentRoomId = code;
-          isHost = false;
-
-          const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', code));
-          if (!snap.exists()) { alert("Invalid room code."); return; }
-
-          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `room_${code}_players`, myPlayerId), {
-            id: myPlayerId, name, role: 'hider', isHost: false, isCaught: false, lat: userLocation.lat, lng: userLocation.lng, isOutOfBounds: false, lastUpdated: Date.now()
-          });
-
-          subscribeToRoom(code);
-          showLobbyScreen();
-        } catch (err) {
-          console.error("Join error:", err);
-          alert("Error joining room: " + err.message);
-        }
-      };
-
-      document.getElementById('btn-start-game').onclick = async () => {
-        if (!isHost || !currentRoomId) return;
-        const playerIds = Object.keys(roomPlayers);
-        if (playerIds.length === 0) return;
-
-        const seekerId = playerIds[Math.floor(Math.random() * playerIds.length)];
-        for (const id of playerIds) {
-          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', `room_${currentRoomId}_players`, id), {
-            role: id === seekerId ? 'seeker' : 'hider', isCaught: false
-          });
-        }
-
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', currentRoomId), {
-          status: 'playing', startTime: Date.now(), center: userLocation
-        });
-      };
-    });
-
-    function showLobbyScreen() {
-      document.getElementById('lobby-entry-card').classList.add('hidden');
-      document.getElementById('create-form-card').classList.add('hidden');
-      document.getElementById('join-form-card').classList.add('hidden');
-      document.getElementById('waiting-lobby-card').classList.remove('hidden');
-      document.getElementById('room-code-display').classList.remove('hidden');
-      document.getElementById('current-room-id').innerText = currentRoomId;
-      document.getElementById('lobby-room-code').innerText = currentRoomId;
-
-      if (isHost) {
-        document.getElementById('host-badge').classList.remove('hidden');
-        document.getElementById('host-controls').classList.remove('hidden');
-        document.getElementById('non-host-msg').classList.add('hidden');
-      }
-    }
-
-    function subscribeToRoom(roomId) {
-      onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'manhunt_rooms', roomId), (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          if (data.status === 'playing') {
-            document.getElementById('screen-lobby').classList.add('hidden');
-            document.getElementById('timer-display').classList.remove('hidden');
-          }
-        }
-      });
-
-      onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', `room_${roomId}_players`), (snap) => {
-        roomPlayers = {};
-        snap.forEach(d => { roomPlayers[d.id] = d.data(); });
-        
-        const list = document.getElementById('lobby-players-list');
-        list.innerHTML = '';
-        document.getElementById('lobby-count').innerText = Object.keys(roomPlayers).length;
-        Object.values(roomPlayers).forEach(p => {
-          list.innerHTML += `<div class="bg-slate-950 p-2 rounded flex justify-between text-xs font-bold"><span>${p.name}</span><span>${p.role}</span></div>`;
-        });
-      });
-    }
-  </script>
-</body>
-</html>
