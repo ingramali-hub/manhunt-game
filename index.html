@@ -85,8 +85,8 @@
               <input type="text" id="player-name-input" placeholder="e.g. Ghost" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-amber-500 text-sm">
             </div>
             <div class="grid grid-cols-2 gap-3 pt-2">
-              <button onclick="showCreateScreen()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm transition shadow">Create Room</button>
-              <button onclick="showJoinScreen()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl text-sm border border-slate-700 transition">Join Room</button>
+              <button type="button" onclick="window.showCreateScreen()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 px-4 rounded-xl text-sm transition shadow">Create Room</button>
+              <button type="button" onclick="window.showJoinScreen()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-4 rounded-xl text-sm border border-slate-700 transition">Join Room</button>
             </div>
           </div>
 
@@ -95,8 +95,8 @@
             <h3 class="text-sm font-bold text-amber-400 uppercase">Join Room</h3>
             <input type="text" id="join-room-code" placeholder="ENTER 4-LETTER CODE" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 font-mono text-center text-lg tracking-widest uppercase focus:outline-none focus:border-amber-500">
             <div class="flex space-x-2">
-              <button onclick="showEntryCard()" class="w-1/3 bg-slate-800 text-slate-400 font-bold py-3 rounded-xl text-xs">Back</button>
-              <button onclick="joinGameRoom()" class="w-2/3 bg-amber-500 text-slate-950 font-bold py-3 rounded-xl text-xs hover:bg-amber-400">Join Game</button>
+              <button type="button" onclick="window.showEntryCard()" class="w-1/3 bg-slate-800 text-slate-400 font-bold py-3 rounded-xl text-xs">Back</button>
+              <button type="button" onclick="window.joinGameRoom()" class="w-2/3 bg-amber-500 text-slate-950 font-bold py-3 rounded-xl text-xs hover:bg-amber-400">Join Game</button>
             </div>
           </div>
 
@@ -121,8 +121,8 @@
               </div>
             </div>
             <div class="flex space-x-2 pt-2">
-              <button onclick="showEntryCard()" class="w-1/3 bg-slate-800 text-slate-400 font-bold py-3 rounded-xl text-xs">Back</button>
-              <button onclick="createGameRoom()" class="w-2/3 bg-amber-500 text-slate-950 font-bold py-3 rounded-xl text-xs hover:bg-amber-400">Launch Room</button>
+              <button type="button" onclick="window.showEntryCard()" class="w-1/3 bg-slate-800 text-slate-400 font-bold py-3 rounded-xl text-xs">Back</button>
+              <button type="button" onclick="window.createGameRoom()" class="w-2/3 bg-amber-500 text-slate-950 font-bold py-3 rounded-xl text-xs hover:bg-amber-400">Launch Room</button>
             </div>
           </div>
 
@@ -137,83 +137,4 @@
             </div>
             <div>
               <span class="text-xs text-slate-400 font-bold uppercase">Players (<span id="lobby-count">0</span>)</span>
-              <div id="lobby-players-list" class="space-y-1.5 max-h-40 overflow-y-auto custom-scroll pr-1 mt-2"></div>
-            </div>
-            <div id="host-controls" class="hidden pt-2">
-              <button onclick="startGame()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition shadow-lg flex items-center justify-center space-x-2">
-                <i class="fa-solid fa-dice"></i><span>Randomize Roles & Start</span>
-              </button>
-            </div>
-            <p id="non-host-msg" class="text-center text-xs text-slate-500 italic">Waiting for host to launch...</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- CHAT WIDGET -->
-      <div id="chat-widget" class="absolute bottom-4 right-4 z-20 flex flex-col items-end">
-        <div id="chat-drawer" class="hidden bg-slate-900 border border-slate-800 rounded-2xl w-80 h-96 shadow-2xl flex flex-col overflow-hidden mb-3">
-          <div class="bg-slate-800 px-4 py-3 border-b border-slate-700 flex justify-between items-center">
-            <span id="chat-channel-title" class="text-xs font-bold text-slate-200 uppercase">Radio Channel</span>
-            <button onclick="toggleChat()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-chevron-down text-sm"></i></button>
-          </div>
-          <div id="chat-messages" class="flex-1 p-3 overflow-y-auto space-y-2 text-xs custom-scroll"></div>
-          <form id="chat-form" class="p-2 border-t border-slate-800 flex space-x-2 bg-slate-950">
-            <input type="text" id="chat-input" placeholder="Type transmission..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
-            <button type="submit" class="bg-amber-500 text-slate-950 font-bold px-3 py-2 rounded-xl text-xs"><i class="fa-solid fa-paper-plane"></i></button>
-          </form>
-        </div>
-        <button onclick="toggleChat()" class="bg-amber-500 text-slate-950 font-bold p-3.5 rounded-full shadow-2xl"><i class="fa-solid fa-message text-base"></i></button>
-      </div>
-    </main>
-
-    <!-- MODALS -->
-    <div id="modal-roster" class="hidden absolute inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4">
-      <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 space-y-4">
-        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 class="font-bold text-sm text-amber-400 uppercase">Roster</h3>
-          <button onclick="closeModals()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="space-y-3 max-h-[60vh] overflow-y-auto text-xs">
-          <div><div class="text-red-400 font-bold mb-1">Seekers (<span id="count-seekers">0</span>)</div><div id="roster-seekers" class="space-y-1"></div></div>
-          <div><div class="text-blue-400 font-bold mb-1">Hiders (<span id="count-hiders">0</span>)</div><div id="roster-hiders" class="space-y-1"></div></div>
-          <div><div class="text-slate-500 font-bold mb-1">Caught (<span id="count-caught">0</span>)</div><div id="roster-caught" class="space-y-1"></div></div>
-        </div>
-      </div>
-    </div>
-
-    <div id="modal-rules" class="hidden absolute inset-0 bg-slate-950/80 z-50 flex items-center justify-center p-4">
-      <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 space-y-4 text-xs text-slate-300">
-        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-          <h3 class="font-bold text-sm text-amber-400 uppercase">Rules</h3>
-          <button onclick="closeModals()" class="text-slate-400"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <p>Hiders survive until time expires. Seekers tag hiders. Stay inside the boundary circle!</p>
-        <button onclick="closeModals()" class="w-full bg-slate-800 text-slate-200 font-bold py-2.5 rounded-xl">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- FIREBASE & APP LOGIC SCRIPT -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
-    const appId = 'manhunt-game-2dc41';
-    const firebaseConfig = {
-      apiKey: "AIzaSyDd4L5crymw_eiaW14gECTEh8MySqyCkW8",
-      authDomain: "manhunt-game-2dc41.firebaseapp.com",
-      projectId: "manhunt-game-2dc41",
-      storageBucket: "manhunt-game-2dc41.firebasestorage.app",
-      messagingSenderId: "253026826085",
-      appId: "1:253026826085:web:b37d1d8485632ece52538c"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    let myPlayerId = null;
-    let myPlayerName = "";
-    let currentRoomId = null;
-    let isHost = false;
+              <div id="lobby-players-list" class="space-y-1.5 max-h-40 overflow-y-auto custom-scroll pr-1 mt-2">
