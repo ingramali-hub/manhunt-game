@@ -223,11 +223,8 @@
       document.getElementById('btn-open-roster').onclick = () => document.getElementById('modal-roster').classList.remove('hidden');
       document.getElementById('btn-close-roster').onclick = () => document.getElementById('modal-roster').classList.add('hidden');
 
-      // Launch Room Handler with Debug Alerts
+      // Launch Room Handler (Alert removed so execution proceeds immediately)
       document.getElementById('btn-submit-create').onclick = async () => {
-        console.log("Launch Room button clicked!");
-        alert("Launch button clicked successfully!"); // Temporary debug alert
-
         try {
           const nameInput = document.getElementById('player-name-input');
           const name = nameInput ? nameInput.value.trim() : "";
